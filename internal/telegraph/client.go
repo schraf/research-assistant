@@ -50,6 +50,10 @@ func NewClient(cfg Config) Client {
 	}
 }
 
+func NewDefaultClient() Client {
+	return NewClient(Config{})
+}
+
 // CreateAccount creates a new Telegraph account.
 func (c *client) CreateAccount(ctx context.Context, req CreateAccountRequest) (*Account, error) {
 	var result Account

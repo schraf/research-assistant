@@ -2,7 +2,7 @@ package researcher
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/schraf/gemini-email/internal/models"
@@ -29,7 +29,17 @@ func ResearchTopic(ctx context.Context, resources models.Resources, topic string
 
 		go func() {
 			defer group.Done()
+
+			slog.Info("starting_research",
+				slog.String("topic", item.SubTopic),
+			)
+
 			resultsChan <- ResearchSubTopic(ctx, resources, plan.Goal, item.SubTopic, item.Questions, 5)
+
+			slog.Info("finished_research",
+				slog.String("topic", item.SubTopic),
+			)
+
 		}()
 	}
 
@@ -45,16 +55,6 @@ func ResearchTopic(ctx context.Context, resources models.Resources, topic string
 	report, err := SynthesizeReport(ctx, resources, topic, results)
 	if err != nil {
 		return nil, err
-	}
-
-	fmt.Printf("# %s\n\n", report.Title)
-
-	for _, section := range report.Sections {
-		fmt.Printf("## %s\n", section.SectionTitle)
-
-		for _, paragraph := range section.Paragraphs {
-			fmt.Printf("%s\n\n", paragraph)
-		}
 	}
 
 	return report, nil

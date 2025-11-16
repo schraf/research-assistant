@@ -53,9 +53,7 @@ type ResearchReport struct {
 }
 
 func SynthesizeReport(ctx context.Context, resources models.Resources, topic string, results []ResearchResult) (*ResearchReport, error) {
-	slog.InfoContext(ctx, "synthesizing_report",
-		slog.String("topic", topic),
-	)
+	slog.InfoContext(ctx, "synthesizing_report")
 
 	prompt, err := BuildPrompt(SynthesizePrompt, PromptArgs{
 		"ResearchTopic":   topic,

@@ -44,9 +44,7 @@ type ResearchPlan struct {
 }
 
 func GenerateResearchPlan(ctx context.Context, resources models.Resources, topic string) (*ResearchPlan, error) {
-	slog.InfoContext(ctx, "generating_research_plan",
-		slog.String("topic", topic),
-	)
+	slog.InfoContext(ctx, "generating_research_plan")
 
 	prompt, err := BuildPrompt(ResearchPlanPrompt, PromptArgs{"ResearchTopic": topic})
 	if err != nil {

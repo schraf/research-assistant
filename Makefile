@@ -1,7 +1,5 @@
 # Variables
-BINARY_NAME=gemini-email
 BUILD_DIR=bin
-MAIN_PATH=./cmd
 GO_FILES=$(shell find . -name "*.go" -not -path "./vendor/*")
 
 # Default target
@@ -11,22 +9,21 @@ all: vet build
 # Build the application
 .PHONY: build
 build: vet test
-	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
-	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
+	go build -o $(BUILD_DIR)/gentoken ./cmd/gentoken
+	go build -o $(BUILD_DIR)/research ./cmd/research
 
 # Run the application
 .PHONY: run
 run:
-	@echo "Running $(BINARY_NAME)..."
-	@if [ -f .env ]; then \
-		echo "Loading environment from .env file..."; \
-		export $$(cat .env | xargs) && go run $(MAIN_PATH); \
-	else \
-		echo "No .env file found, running without environment variables..."; \
-		go run $(MAIN_PATH); \
-	fi
+	@echo "Running..."
+	go run ./cmd/research
+
+# Run tool to generate a token
+.PHONY: generate-token
+generate-token:
+	@echo "Generate token..."
+	go run ./cmd/gentoken
 
 # Vet the code
 .PHONY: vet
@@ -123,14 +120,15 @@ clean-all: clean terraform-destroy
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  all          - Run vet and build"
-	@echo "  build        - Build the application"
-	@echo "  run          - Run the application"
-	@echo "  vet          - Vet the code"
-	@echo "  fmt          - Format the code"
-	@echo "  test         - Run tests"
-	@echo "  clean        - Clean build artifacts"
-	@echo "  deps         - Install dependencies"
+	@echo "  all            - Run vet and build"
+	@echo "  build          - Build the application"
+	@echo "  run            - Run the application"
+	@echo "  generate-token - Generate a Telegraph API token"
+	@echo "  vet            - Vet the code"
+	@echo "  fmt            - Format the code"
+	@echo "  test           - Run tests"
+	@echo "  clean          - Clean build artifacts"
+	@echo "  deps           - Install dependencies"
 	@echo ""
 	@echo "Terraform targets:"
 	@echo "  terraform-init      - Initialize Terraform"
