@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
@@ -19,8 +20,8 @@ func StartServer(ctx context.Context) error {
 	}
 
 	slog.Info("starting_server",
-		slog.String("hostname", hostnam),
-		slog.Port("port", port),
+		slog.String("hostname", hostname),
+		slog.String("port", port),
 	)
 
 	if err := funcframework.StartHostPort(hostname, port); err != nil {
