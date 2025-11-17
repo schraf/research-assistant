@@ -1,6 +1,5 @@
 # Variables
 BUILD_DIR=bin
-GO_FILES=$(shell find . -name "*.go" -not -path "./vendor/*")
 
 # Default target
 .PHONY: all

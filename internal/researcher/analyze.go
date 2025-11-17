@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/schraf/gemini-email/internal/models"
+	"github.com/schraf/research-assistant/internal/models"
 )
 
 const (
@@ -45,8 +45,8 @@ const (
 		`
 )
 
-func AnalyzeKnowledge(ctx context.Context, resources models.Resources, goal string, topic string, questions []string, knowledge []Knowledge) ([]string, error) {
-	slog.InfoContext(ctx, "analyzing_knowledge",
+func AnalyzeKnowledge(ctx context.Context, logger *slog.Logger, resources models.Resources, goal string, topic string, questions []string, knowledge []Knowledge) ([]string, error) {
+	logger.InfoContext(ctx, "analyzing_knowledge",
 		slog.String("topic", topic),
 	)
 

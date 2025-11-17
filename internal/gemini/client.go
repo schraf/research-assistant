@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/schraf/gemini-email/internal/models"
+	"github.com/schraf/research-assistant/internal/models"
 	"google.golang.org/genai"
 )
 

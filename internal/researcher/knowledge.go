@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/schraf/gemini-email/internal/models"
+	"github.com/schraf/research-assistant/internal/models"
 )
 
 const (
@@ -49,8 +49,8 @@ type Knowledge struct {
 	Information string `json:"information"`
 }
 
-func GenerateKnowledge(ctx context.Context, resources models.Resources, topic string, questions []string) ([]Knowledge, error) {
-	slog.InfoContext(ctx, "generating_knowledge",
+func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, questions []string) ([]Knowledge, error) {
+	logger.InfoContext(ctx, "generating_knowledge",
 		slog.String("subtopic", topic),
 	)
 

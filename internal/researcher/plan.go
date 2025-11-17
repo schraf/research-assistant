@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/schraf/gemini-email/internal/models"
+	"github.com/schraf/research-assistant/internal/models"
 )
 
 const (
@@ -43,8 +43,8 @@ type ResearchPlan struct {
 	ResearchItems []ResearchItem `json:"research_items"`
 }
 
-func GenerateResearchPlan(ctx context.Context, resources models.Resources, topic string) (*ResearchPlan, error) {
-	slog.InfoContext(ctx, "generating_research_plan")
+func GenerateResearchPlan(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string) (*ResearchPlan, error) {
+	logger.InfoContext(ctx, "generating_research_plan")
 
 	prompt, err := BuildPrompt(ResearchPlanPrompt, PromptArgs{"ResearchTopic": topic})
 	if err != nil {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/schraf/gemini-email/internal/models"
+	"github.com/schraf/research-assistant/internal/models"
 )
 
 const (
@@ -52,8 +52,8 @@ type ResearchReport struct {
 	Sections []ReportSection `json:"sections"`
 }
 
-func SynthesizeReport(ctx context.Context, resources models.Resources, topic string, results []ResearchResult) (*ResearchReport, error) {
-	slog.InfoContext(ctx, "synthesizing_report")
+func SynthesizeReport(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, results []ResearchResult) (*ResearchReport, error) {
+	logger.InfoContext(ctx, "synthesizing_report")
 
 	prompt, err := BuildPrompt(SynthesizePrompt, PromptArgs{
 		"ResearchTopic":   topic,

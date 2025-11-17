@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/schraf/gemini-email/internal/models"
+	"github.com/schraf/research-assistant/internal/models"
 )
 
 type ResearchResult struct {
@@ -14,8 +14,8 @@ type ResearchResult struct {
 	Error     error
 }
 
-func ResearchTopic(ctx context.Context, resources models.Resources, topic string) (*ResearchReport, error) {
-	plan, err := GenerateResearchPlan(ctx, resources, topic)
+func ResearchTopic(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string) (*ResearchReport, error) {
+	plan, err := GenerateResearchPlan(ctx, logger, resources, topic)
 	if err != nil {
 		return nil, err
 	}
@@ -30,13 +30,13 @@ func ResearchTopic(ctx context.Context, resources models.Resources, topic string
 		go func() {
 			defer group.Done()
 
-			slog.Info("starting_research",
+			logger.Info("starting_research",
 				slog.String("topic", item.SubTopic),
 			)
 
-			resultsChan <- ResearchSubTopic(ctx, resources, plan.Goal, item.SubTopic, item.Questions, 5)
+			resultsChan <- ResearchSubTopic(ctx, logger, resources, plan.Goal, item.SubTopic, item.Questions, 5)
 
-			slog.Info("finished_research",
+			logger.Info("finished_research",
 				slog.String("topic", item.SubTopic),
 			)
 
@@ -52,7 +52,7 @@ func ResearchTopic(ctx context.Context, resources models.Resources, topic string
 		results = append(results, result)
 	}
 
-	report, err := SynthesizeReport(ctx, resources, topic, results)
+	report, err := SynthesizeReport(ctx, logger, resources, topic, results)
 	if err != nil {
 		return nil, err
 	}
@@ -60,14 +60,14 @@ func ResearchTopic(ctx context.Context, resources models.Resources, topic string
 	return report, nil
 }
 
-func ResearchSubTopic(ctx context.Context, resources models.Resources, goal string, topic string, questions []string, maxIterations int) ResearchResult {
+func ResearchSubTopic(ctx context.Context, logger *slog.Logger, resources models.Resources, goal string, topic string, questions []string, maxIterations int) ResearchResult {
 	result := ResearchResult{
 		Topic:     topic,
 		Knowledge: []Knowledge{},
 	}
 
 	for iteration := 0; iteration < maxIterations; iteration++ {
-		newKnowledge, err := GenerateKnowledge(ctx, resources, topic, questions)
+		newKnowledge, err := GenerateKnowledge(ctx, logger, resources, topic, questions)
 		if err != nil {
 			result.Error = err
 			break
@@ -75,7 +75,7 @@ func ResearchSubTopic(ctx context.Context, resources models.Resources, goal stri
 
 		result.Knowledge = append(result.Knowledge, newKnowledge...)
 
-		moreQuestions, err := AnalyzeKnowledge(ctx, resources, goal, topic, questions, result.Knowledge)
+		moreQuestions, err := AnalyzeKnowledge(ctx, logger, resources, goal, topic, questions, result.Knowledge)
 		if err != nil {
 			result.Error = err
 			break

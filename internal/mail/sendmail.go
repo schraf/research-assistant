@@ -1,19 +1,20 @@
 package mail
 
 import (
+	"context"
 	"log/slog"
 	"net/smtp"
 	"os"
 )
 
-func SendEmail(subject string, body string) error {
+func SendEmail(ctx context.Context, logger *slog.Logger, subject string, body string) error {
 	smtpServer := os.Getenv("MAIL_SMTP_SERVER")
 	smtpPort := os.Getenv("MAIL_SMTP_PORT")
 	senderEmail := os.Getenv("MAIL_SENDER_EMAIL")
 	password := os.Getenv("MAIL_SENDER_PASSWORD")
 	recipientEmail := os.Getenv("MAIL_RECIPIENT_EMAIL")
 
-	slog.Info("sending_email",
+	logger.Info("sending_email",
 		slog.String("server", smtpServer),
 		slog.String("port", smtpPort),
 		slog.String("recipient", recipientEmail),
@@ -47,7 +48,7 @@ func SendEmail(subject string, body string) error {
 		return err
 	}
 
-	slog.Info("email_sent")
+	logger.Info("email_sent")
 
 	return nil
 }

@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/schraf/gemini-email/internal/telegraph"
-	"github.com/schraf/gemini-email/internal/utils"
+	"github.com/schraf/research-assistant/internal/telegraph"
+	"github.com/schraf/research-assistant/internal/utils"
 )
 
 func main() {
