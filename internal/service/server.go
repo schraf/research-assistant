@@ -13,10 +13,15 @@ func StartServer(ctx context.Context) error {
 		port = envPort
 	}
 
-	hostname := ""
+	hostname := "0.0.0.0"
 	if localOnly := os.Getenv("LOCAL_ONLY"); localOnly == "true" {
 		hostname = "127.0.0.1"
 	}
+
+	slog.Info("starting_server",
+		slog.String("hostname", hostnam),
+		slog.Port("port", port),
+	)
 
 	if err := funcframework.StartHostPort(hostname, port); err != nil {
 		return err

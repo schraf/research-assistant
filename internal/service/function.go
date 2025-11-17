@@ -93,6 +93,10 @@ func research(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Info("received_research_request",
+		slog.String("topic", topic),
+	)
+
 	// Create research report
 	report, err := createResearchReport(ctx, logger, topic)
 	if err != nil {
