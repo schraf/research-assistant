@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/schraf/gemini-email/internal/gemini"
+	"github.com/schraf/gemini-email/internal/mail"
 	"github.com/schraf/gemini-email/internal/researcher"
 	"github.com/schraf/gemini-email/internal/telegraph"
 	"github.com/schraf/gemini-email/internal/utils"
@@ -13,10 +14,9 @@ import (
 
 const (
 	Topic = `
-		I would a report of the life and works of H. P. Lovecraft. Please
-		include details about this family and personal life. Also include
-		information about this most famous works of fiction. Finally include
-		any notable details about his legacy.  
+		I would a report about the Forth programming language. Include it
+		history, notable programs, uses in modern software development,
+		syntax overview, core words, and implementation details.
 		`
 )
 
@@ -106,9 +106,19 @@ func main() {
 		slog.Error("failed_posting_research_repo",
 			slog.String("error", err.Error()),
 		)
+
+		os.Exit(1)
 	}
 
 	slog.Info("research_report_posted",
 		slog.String("url", *url),
 	)
+
+	if err := mail.SendEmail(report.Title, *url); err != nil {
+		slog.Error("failed_sending_email",
+			slog.String("error", err.Error()),
+		)
+
+		os.Exit(1)
+	}
 }
