@@ -33,3 +33,6 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# Build files
+bin/
