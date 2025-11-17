@@ -10,6 +10,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/google/uuid"
+	"github.com/schraf/research-assistant/internal/auth"
 	"github.com/schraf/research-assistant/internal/gemini"
 	"github.com/schraf/research-assistant/internal/mail"
 	"github.com/schraf/research-assistant/internal/researcher"
@@ -62,10 +63,15 @@ func postResearchReport(ctx context.Context, report researcher.ResearchReport) (
 		}
 	}
 
+	authorName := os.Getenv("TELEGRAPH_AUTHOR_NAME")
+	returnContent := false
+
 	pageRequest := telegraph.CreatePageRequest{
-		AccessToken: apiToken,
-		Title:       report.Title,
-		Content:     content,
+		AccessToken:   apiToken,
+		Title:         report.Title,
+		AuthorName:    &authorName,
+		Content:       content,
+		ReturnContent: &returnContent,
 	}
 
 	page, err := client.CreatePage(ctx, pageRequest)
@@ -85,10 +91,22 @@ func research(w http.ResponseWriter, r *http.Request) {
 	requestId := uuid.NewString()
 	logger := slog.With(slog.String("request_id", requestId))
 
+	// Validate bearer token
+	authHeader := r.Header.Get("Authorization")
+	if !auth.ValidateToken(authHeader) {
+		logger.Warn("unauthorized_request",
+			slog.String("auth_header_present", fmt.Sprintf("%v", authHeader != "")),
+		)
+
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Extract topic from query parameter
 	topic := r.URL.Query().Get("topic")
 	if topic == "" {
 		logger.Error("missing_topic_parameter")
+
 		http.Error(w, "missing required query parameter: topic", http.StatusBadRequest)
 		return
 	}

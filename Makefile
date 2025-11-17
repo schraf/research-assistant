@@ -9,7 +9,8 @@ all: vet build
 .PHONY: build
 build: vet test
 	@mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/gentoken ./cmd/gentoken
+	go build -o $(BUILD_DIR)/gentelegraphtoken ./cmd/gentelegraphtoken
+	go build -o $(BUILD_DIR)/genauthtoken ./cmd/genauthtoken
 	go build -o $(BUILD_DIR)/research ./cmd/research
 
 # Run the application
@@ -18,11 +19,17 @@ run:
 	@echo "Running..."
 	go run ./cmd/research
 
-# Run tool to generate a token
-.PHONY: generate-token
-generate-token:
-	@echo "Generate token..."
-	go run ./cmd/gentoken
+# Run tool to generate a telegraph token
+.PHONY: telegraph-token
+telegraph-token:
+	@echo "Generating telegraph token..."
+	go run ./cmd/gentelegraphtoken
+
+# Run tool to generate an auth token
+.PHONY: auth-token
+auth-token:
+	@echo "Generating auth token..."
+	go run ./cmd/genauthtoken
 
 # Vet the code
 .PHONY: vet
@@ -119,15 +126,15 @@ clean-all: clean terraform-destroy
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  all            - Run vet and build"
-	@echo "  build          - Build the application"
-	@echo "  run            - Run the application"
-	@echo "  generate-token - Generate a Telegraph API token"
-	@echo "  vet            - Vet the code"
-	@echo "  fmt            - Format the code"
-	@echo "  test           - Run tests"
-	@echo "  clean          - Clean build artifacts"
-	@echo "  deps           - Install dependencies"
+	@echo "  all             - Run vet and build"
+	@echo "  build           - Build the application"
+	@echo "  run             - Run the application"
+	@echo "  telegraph-token - Generate a Telegraph API token"
+	@echo "  vet             - Vet the code"
+	@echo "  fmt             - Format the code"
+	@echo "  test            - Run tests"
+	@echo "  clean           - Clean build artifacts"
+	@echo "  deps            - Install dependencies"
 	@echo ""
 	@echo "Terraform targets:"
 	@echo "  terraform-init      - Initialize Terraform"

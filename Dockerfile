@@ -10,7 +10,7 @@ COPY internal ./internal
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o bin/research ./cmd/research
 
-FROM scratch
+FROM golang:1.24 as runtime
 COPY --from=builder /app/bin/research /research
 
 EXPOSE 8080
