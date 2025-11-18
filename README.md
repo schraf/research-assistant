@@ -323,6 +323,6 @@ Run `make help` to see all available commands.
 
 See [LICENSE](LICENSE).
 
-## Support
+## Contributing
 
-For issues and questions, please open an issue on GitHub.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
