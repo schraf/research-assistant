@@ -6,7 +6,7 @@ This guide explains how to build and deploy the Research Assistant application t
 
 1. **Google Cloud Project**: You need a GCP project with billing enabled
 2. **gcloud CLI**: Install and authenticate with `gcloud auth login`
-3. **Docker**: For local builds (optional)
+3. **Docker or Podman**: For local container builds (optional, only needed for Option B deployment)
 4. **Terraform**: For infrastructure provisioning
 
 ## Step 1: Configure Terraform Variables
@@ -74,21 +74,28 @@ PROJECT_ID=your-project-id REGION=us-central1 make deploy
 
 **Note:** This step replaces the placeholder image created by Terraform with your actual application image.
 
-### Option B: Local Docker Build and Push
+### Option B: Local Container Build and Push
 
-1. Authenticate Docker with Artifact Registry:
+1. Authenticate with Artifact Registry (works for both Docker and Podman):
    ```bash
    gcloud auth configure-docker us-central1-docker.pkg.dev
    ```
 
 2. Build and push the image:
    ```bash
-   PROJECT_ID=your-project-id make docker-push
+   PROJECT_ID=your-project-id make container-push
    ```
 
-3. Update the Cloud Run service to use the new image:
+3. Update the Cloud Run service to use the new image (replace `us-central1` with your region if different):
    ```bash
    gcloud run services update research-assistant \
+     --image us-central1-docker.pkg.dev/your-project-id/research-assistant/research-assistant:latest \
+     --region us-central1
+   ```
+
+4. Update the Cloud Run Job to use the new image (replace `us-central1` with your region if different):
+   ```bash
+   gcloud run jobs update research-worker \
      --image us-central1-docker.pkg.dev/your-project-id/research-assistant/research-assistant:latest \
      --region us-central1
    ```
@@ -128,7 +135,10 @@ This will output tokens for each message. Use one of these tokens in the `Author
 
 All environment variables are automatically set by Terraform from your `terraform.tfvars` file. The following variables are configured:
 
-- `PORT`: Set to 8080
+### Cloud Run Service Environment Variables
+
+- `PORT`: Defaults to 8080 (Cloud Run sets this automatically, but the service defaults to 8080 if not set)
+- `GOOGLE_API_KEY`: From terraform variable
 - `TELEGRAPH_API_KEY`: From terraform variable
 - `TELEGRAPH_AUTHOR_NAME`: From terraform variable
 - `AUTH_SECRET`: From terraform variable
@@ -138,6 +148,13 @@ All environment variables are automatically set by Terraform from your `terrafor
 - `MAIL_SENDER_EMAIL`: From terraform variable
 - `MAIL_SENDER_PASSWORD`: From terraform variable
 - `MAIL_RECIPIENT_EMAIL`: From terraform variable
+- `GOOGLE_CLOUD_PROJECT`: From terraform variable (project_id)
+- `CLOUD_RUN_JOB_NAME`: Automatically set to the Cloud Run Job name
+- `CLOUD_RUN_JOB_REGION`: From terraform variable (region)
+
+### Cloud Run Job Environment Variables
+
+The Cloud Run Job has the same environment variables as the service (except `CLOUD_RUN_JOB_NAME` and `CLOUD_RUN_JOB_REGION` which are only needed by the service).
 
 ## Updating the Deployment
 
@@ -152,19 +169,33 @@ To update the application after making code changes:
    - Build the new container image
    - Push it to Artifact Registry
    - Update the Cloud Run service with the new image
+   - Update the Cloud Run Job with the new image
 
 ## Troubleshooting
 
-### View Cloud Run Logs
+### View Cloud Run Service Logs
 
 ```bash
 gcloud run services logs read research-assistant --region us-central1
+```
+
+### View Cloud Run Job Logs
+
+```bash
+gcloud run jobs executions list --job research-worker --region us-central1
+gcloud run jobs executions logs read EXECUTION_NAME --job research-worker --region us-central1
 ```
 
 ### Check Service Status
 
 ```bash
 gcloud run services describe research-assistant --region us-central1
+```
+
+### Check Job Status
+
+```bash
+gcloud run jobs describe research-worker --region us-central1
 ```
 
 ### Update Environment Variables
@@ -174,7 +205,7 @@ Edit `terraform/terraform.tfvars` and run:
 make terraform-apply
 ```
 
-This will update the Cloud Run service with new environment variables.
+This will update both the Cloud Run service and Cloud Run Job with new environment variables.
 
 ## Cleanup
 
