@@ -77,8 +77,8 @@ func SynthesizeReport(ctx context.Context, logger *slog.Logger, resources models
 	return &report, nil
 }
 
-func SynthesizeReportSchema() map[string]any {
-	return map[string]any{
+func SynthesizeReportSchema() models.Schema {
+	return models.Schema{
 		"type": "object",
 		"properties": map[string]any{
 			"title": map[string]any{

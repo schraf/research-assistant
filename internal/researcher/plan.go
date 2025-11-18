@@ -65,8 +65,8 @@ func GenerateResearchPlan(ctx context.Context, logger *slog.Logger, resources mo
 	return &plan, nil
 }
 
-func ResearchPlanSchema() map[string]any {
-	return map[string]any{
+func ResearchPlanSchema() models.Schema {
+	return models.Schema{
 		"type": "object",
 		"properties": map[string]any{
 			"goal": map[string]any{

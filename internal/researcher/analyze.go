@@ -74,8 +74,8 @@ func AnalyzeKnowledge(ctx context.Context, logger *slog.Logger, resources models
 	return furtherQuestions, nil
 }
 
-func AnalyzeKnowledgeSchema() map[string]any {
-	return map[string]any{
+func AnalyzeKnowledgeSchema() models.Schema {
+	return models.Schema{
 		"type":        "array",
 		"description": "A list of follow up research questions to be answered",
 		"items": map[string]any{

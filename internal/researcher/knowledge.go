@@ -88,8 +88,8 @@ func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources model
 	return knowledge, nil
 }
 
-func KnowledgeSchema() map[string]any {
-	return map[string]any{
+func KnowledgeSchema() models.Schema {
+	return models.Schema{
 		"type": "array",
 		"items": map[string]any{
 			"type": "object",

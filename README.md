@@ -321,11 +321,7 @@ Run `make help` to see all available commands.
 
 ## License
 
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines here]
+See [LICENSE](LICENSE).
 
 ## Support
 
