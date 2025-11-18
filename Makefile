@@ -1,5 +1,6 @@
 # Variables
 BUILD_DIR=bin
+REGION ?= us-central1
 
 # Default target
 .PHONY: all
@@ -122,6 +123,48 @@ setup-infra: terraform-init terraform-apply
 clean-all: clean terraform-destroy
 	@echo "Cleaning all artifacts and infrastructure..."
 
+# Docker and deployment targets
+.PHONY: docker-build
+docker-build:
+	@echo "Building Docker image..."
+	@if [ -z "$(PROJECT_ID)" ]; then \
+		echo "Error: PROJECT_ID environment variable is required"; \
+		echo "Usage: PROJECT_ID=your-project-id make docker-build"; \
+		exit 1; \
+	fi
+	@docker build -t $(REGION)-docker.pkg.dev/$(PROJECT_ID)/research-assistant/research-assistant:latest .
+
+.PHONY: docker-push
+docker-push: docker-build
+	@echo "Pushing Docker image to Artifact Registry..."
+	@if [ -z "$(PROJECT_ID)" ]; then \
+		echo "Error: PROJECT_ID environment variable is required"; \
+		echo "Usage: PROJECT_ID=your-project-id make docker-push"; \
+		exit 1; \
+	fi
+	@docker push $(REGION)-docker.pkg.dev/$(PROJECT_ID)/research-assistant/research-assistant:latest
+
+.PHONY: gcloud-build
+gcloud-build:
+	@echo "Building and deploying with Cloud Build..."
+	@if [ -z "$(PROJECT_ID)" ]; then \
+		echo "Error: PROJECT_ID environment variable is required"; \
+		echo "Usage: PROJECT_ID=your-project-id make gcloud-build"; \
+		exit 1; \
+	fi
+	@TAG=$$(git rev-parse --short HEAD 2>/dev/null); \
+	if [ -z "$$TAG" ]; then \
+		TAG=$$(date +%s); \
+	fi; \
+	echo "Using tag: $$TAG"; \
+	gcloud builds submit --config=cloudbuild.yaml \
+		--substitutions=_REGION=$(REGION),_REPO_NAME=research-assistant,_TAG=$$TAG \
+		--project=$(PROJECT_ID)
+
+.PHONY: deploy
+deploy: gcloud-build
+	@echo "Deployment complete!"
+
 # Help target
 .PHONY: help
 help:
@@ -129,6 +172,7 @@ help:
 	@echo "  all             - Run vet and build"
 	@echo "  build           - Build the application"
 	@echo "  run             - Run the application"
+	@echo "  auth-token      - Generate an API auth token"
 	@echo "  telegraph-token - Generate a Telegraph API token"
 	@echo "  vet             - Vet the code"
 	@echo "  fmt             - Format the code"
@@ -139,7 +183,7 @@ help:
 	@echo "Terraform targets:"
 	@echo "  terraform-init      - Initialize Terraform"
 	@echo "  terraform-plan      - Plan Terraform changes"
-	@echo "  terraform-apply     - Apply Terraform changes (creates .env file)"
+	@echo "  terraform-apply     - Apply Terraform changes"
 	@echo "  terraform-destroy   - Destroy Terraform resources"
 	@echo "  terraform-validate  - Validate Terraform configuration"
 	@echo "  terraform-fmt       - Format Terraform files"
@@ -147,4 +191,10 @@ help:
 	@echo "  setup-infra         - Setup infrastructure (init + apply)"
 	@echo "  clean-all           - Clean everything including infrastructure"
 	@echo ""
-	@echo "  help         - Show this help message"
+	@echo "Deployment targets:"
+	@echo "  docker-build        - Build Docker image locally (requires PROJECT_ID)"
+	@echo "  docker-push         - Build and push Docker image (requires PROJECT_ID)"
+	@echo "  gcloud-build        - Build and deploy using Cloud Build (requires PROJECT_ID)"
+	@echo "  deploy              - Full deployment using Cloud Build (requires PROJECT_ID)"
+	@echo ""
+	@echo "  help               - Show this help message"

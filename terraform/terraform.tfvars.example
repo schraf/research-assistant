@@ -1,0 +1,26 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+# Required: Your GCP Project ID
+project_id = "your-gcp-project-id"
+
+# Optional: GCP region (defaults to us-central1)
+region = "us-central1"
+
+# Required: Google Gemini API configuration
+google_api_key = "your-gemini-api-key"
+
+# Required: Telegraph API configuration
+telegraph_api_key    = "your-telegraph-api-key"
+telegraph_author_name = "Your Name"  # Optional
+
+# Required: Authentication configuration
+auth_secret         = "your-secret-key-for-token-generation"
+auth_token_messages = "message1,message2"  # Comma-separated list of valid messages
+
+# Required: Email configuration
+smtp_hostname       = "smtp.gmail.com"  # Default, change if using different SMTP server
+smtp_port          = "587"              # Default, change if using different port
+mail_sender_email  = "your-email@gmail.com"
+mail_sender_password = "your-app-password"  # Use app-specific password for Gmail
+mail_recipient_email = "recipient@example.com"
+
