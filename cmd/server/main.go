@@ -20,7 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := utils.SetupLogger("logs/research.log", slog.LevelDebug); err != nil {
+	if err := utils.SetupLogger("logs/server.log", slog.LevelDebug); err != nil {
 		slog.Error("failed_log_setup",
 			slog.String("error", err.Error()),
 		)

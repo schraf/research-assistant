@@ -1,85 +1,18 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/google/uuid"
 	"github.com/schraf/research-assistant/internal/auth"
-	"github.com/schraf/research-assistant/internal/gemini"
-	"github.com/schraf/research-assistant/internal/mail"
-	"github.com/schraf/research-assistant/internal/researcher"
-	"github.com/schraf/research-assistant/internal/telegraph"
 )
 
 func init() {
 	functions.HTTP("research", research)
-}
-
-func createResearchReport(ctx context.Context, logger *slog.Logger, topic string) (*researcher.ResearchReport, error) {
-	client, err := gemini.NewClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	report, err := researcher.ResearchTopic(ctx, logger, client, topic)
-	if err != nil {
-		return nil, err
-	}
-
-	return report, nil
-}
-
-func postResearchReport(ctx context.Context, report researcher.ResearchReport) (*string, error) {
-	client := telegraph.NewDefaultClient()
-	content := telegraph.Nodes{}
-	apiToken := os.Getenv("TELEGRAPH_API_KEY")
-	if apiToken == "" {
-		return nil, fmt.Errorf("TELEGRAPH_API_KEY environment variable is not set")
-	}
-
-	for _, section := range report.Sections {
-		//--===  ADD SECTION TITLE
-		content = append(content, telegraph.NodeElement{
-			Tag: "h3",
-			Children: telegraph.Nodes{
-				section.SectionTitle,
-			},
-		})
-
-		//--=== ADD SECTION PARAGRAPHS
-		for _, paragraph := range section.Paragraphs {
-			content = append(content, telegraph.NodeElement{
-				Tag: "p",
-				Children: telegraph.Nodes{
-					paragraph,
-				},
-			})
-		}
-	}
-
-	authorName := os.Getenv("TELEGRAPH_AUTHOR_NAME")
-	returnContent := false
-
-	pageRequest := telegraph.CreatePageRequest{
-		AccessToken:   apiToken,
-		Title:         report.Title,
-		AuthorName:    &authorName,
-		Content:       content,
-		ReturnContent: &returnContent,
-	}
-
-	page, err := client.CreatePage(ctx, pageRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	return &page.URL, nil
 }
 
 func requestErrorMessage(requestId string) string {
@@ -89,7 +22,7 @@ func requestErrorMessage(requestId string) string {
 func research(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestId := uuid.NewString()
-	logger := slog.With(slog.String("request_id", requestId))
+	logger := slog.Default().With(slog.String("request_id", requestId))
 
 	// Validate bearer token
 	authHeader := r.Header.Get("Authorization")
@@ -115,10 +48,9 @@ func research(w http.ResponseWriter, r *http.Request) {
 		slog.String("topic", topic),
 	)
 
-	// Create research report
-	report, err := createResearchReport(ctx, logger, topic)
-	if err != nil {
-		logger.Error("failed_researching_topic",
+	// Execute Cloud Run Job with research request
+	if err := executeResearchJob(ctx, logger, requestId, topic); err != nil {
+		logger.Error("failed_executing_research_job",
 			slog.String("error", err.Error()),
 			slog.String("topic", topic),
 		)
@@ -127,63 +59,15 @@ func research(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if report == nil {
-		logger.Error("research_report_is_nil",
-			slog.String("topic", topic),
-		)
-
-		http.Error(w, requestErrorMessage(requestId), http.StatusInternalServerError)
-		return
-	}
-
-	// Post research report to Telegraph
-	url, err := postResearchReport(ctx, *report)
-	if err != nil {
-		logger.Error("failed_posting_research_report",
-			slog.String("error", err.Error()),
-			slog.String("topic", topic),
-			slog.String("report_title", report.Title),
-		)
-
-		http.Error(w, requestErrorMessage(requestId), http.StatusInternalServerError)
-		return
-	}
-
-	if url == nil || *url == "" {
-		logger.Error("telegraph_url_is_empty",
-			slog.String("topic", topic),
-			slog.String("report_title", report.Title),
-		)
-
-		http.Error(w, requestErrorMessage(requestId), http.StatusInternalServerError)
-		return
-	}
-
-	logger.Info("research_report_posted",
-		slog.String("url", *url),
+	logger.Info("research_job_executed",
 		slog.String("topic", topic),
-		slog.String("report_title", report.Title),
 	)
-
-	// Send email notification (non-critical, log but don't fail the request)
-	if err := mail.SendEmail(ctx, logger, report.Title, *url); err != nil {
-		logger.Error("failed_sending_email",
-			slog.String("error", err.Error()),
-			slog.String("topic", topic),
-			slog.String("report_title", report.Title),
-			slog.String("url", *url),
-		)
-
-		http.Error(w, requestErrorMessage(requestId), http.StatusInternalServerError)
-		return
-	}
 
 	// Return success response
 	response := map[string]interface{}{
 		"success":   true,
-		"report_id": requestId,
-		"title":     report.Title,
-		"url":       *url,
+		"request_id": requestId,
+		"message":   "Research request queued",
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -12,13 +12,14 @@ build: vet test
 	@mkdir -p $(BUILD_DIR)
 	go build -o $(BUILD_DIR)/gentelegraphtoken ./cmd/gentelegraphtoken
 	go build -o $(BUILD_DIR)/genauthtoken ./cmd/genauthtoken
-	go build -o $(BUILD_DIR)/research ./cmd/research
+	go build -o $(BUILD_DIR)/server ./cmd/server
+	go build -o $(BUILD_DIR)/worker ./cmd/worker
 
 # Run the application
 .PHONY: run
 run:
 	@echo "Running..."
-	go run ./cmd/research
+	go run ./cmd/server
 
 # Run tool to generate a telegraph token
 .PHONY: telegraph-token
@@ -123,26 +124,26 @@ setup-infra: terraform-init terraform-apply
 clean-all: clean terraform-destroy
 	@echo "Cleaning all artifacts and infrastructure..."
 
-# Docker and deployment targets
-.PHONY: docker-build
-docker-build:
-	@echo "Building Docker image..."
+# Container and deployment targets
+.PHONY: container-build
+container-build:
+	@echo "Building container image with podman..."
 	@if [ -z "$(PROJECT_ID)" ]; then \
 		echo "Error: PROJECT_ID environment variable is required"; \
-		echo "Usage: PROJECT_ID=your-project-id make docker-build"; \
+		echo "Usage: PROJECT_ID=your-project-id make container-build"; \
 		exit 1; \
 	fi
-	@docker build -t $(REGION)-docker.pkg.dev/$(PROJECT_ID)/research-assistant/research-assistant:latest .
+	@podman build -t $(REGION)-docker.pkg.dev/$(PROJECT_ID)/research-assistant/research-assistant:latest .
 
-.PHONY: docker-push
-docker-push: docker-build
-	@echo "Pushing Docker image to Artifact Registry..."
+.PHONY: container-push
+container-push: container-build
+	@echo "Pushing container image to Artifact Registry..."
 	@if [ -z "$(PROJECT_ID)" ]; then \
 		echo "Error: PROJECT_ID environment variable is required"; \
-		echo "Usage: PROJECT_ID=your-project-id make docker-push"; \
+		echo "Usage: PROJECT_ID=your-project-id make container-push"; \
 		exit 1; \
 	fi
-	@docker push $(REGION)-docker.pkg.dev/$(PROJECT_ID)/research-assistant/research-assistant:latest
+	@podman push $(REGION)-docker.pkg.dev/$(PROJECT_ID)/research-assistant/research-assistant:latest
 
 .PHONY: gcloud-build
 gcloud-build:
@@ -192,8 +193,8 @@ help:
 	@echo "  clean-all           - Clean everything including infrastructure"
 	@echo ""
 	@echo "Deployment targets:"
-	@echo "  docker-build        - Build Docker image locally (requires PROJECT_ID)"
-	@echo "  docker-push         - Build and push Docker image (requires PROJECT_ID)"
+	@echo "  container-build     - Build container image locally with podman (requires PROJECT_ID)"
+	@echo "  container-push      - Build and push container image with podman (requires PROJECT_ID)"
 	@echo "  gcloud-build        - Build and deploy using Cloud Build (requires PROJECT_ID)"
 	@echo "  deploy              - Full deployment using Cloud Build (requires PROJECT_ID)"
 	@echo ""

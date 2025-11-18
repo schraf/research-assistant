@@ -46,7 +46,7 @@ resource "google_cloud_run_v2_service" "research_assistant" {
     service_account = google_service_account.gemini_assistant.email
 
     containers {
-      name  = "research-assistant"
+      name = "research-assistant"
       # Use placeholder image initially - will be replaced by first deployment
       image = var.initial_image != "" ? var.initial_image : "gcr.io/cloudrun/hello"
 
@@ -104,6 +104,21 @@ resource "google_cloud_run_v2_service" "research_assistant" {
         value = var.mail_recipient_email
       }
 
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+
+      env {
+        name  = "CLOUD_RUN_JOB_NAME"
+        value = google_cloud_run_v2_job.research_worker.name
+      }
+
+      env {
+        name  = "CLOUD_RUN_JOB_REGION"
+        value = var.region
+      }
+
       resources {
         limits = {
           cpu    = "1"
@@ -112,7 +127,7 @@ resource "google_cloud_run_v2_service" "research_assistant" {
       }
     }
 
-    timeout = "1800s"
+    timeout = "60s"
   }
 
   depends_on = [
@@ -128,3 +143,92 @@ resource "google_cloud_run_v2_service_iam_member" "public_access" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+# Create Cloud Run Job for processing research requests
+resource "google_cloud_run_v2_job" "research_worker" {
+  name     = "research-worker"
+  location = var.region
+
+  template {
+    template {
+      service_account = google_service_account.gemini_assistant.email
+
+      containers {
+        image = var.initial_image != "" ? var.initial_image : "gcr.io/cloudrun/hello"
+
+        command = ["/worker"]
+
+        env {
+          name  = "GOOGLE_API_KEY"
+          value = var.google_api_key
+        }
+
+        env {
+          name  = "TELEGRAPH_API_KEY"
+          value = var.telegraph_api_key
+        }
+
+        env {
+          name  = "TELEGRAPH_AUTHOR_NAME"
+          value = var.telegraph_author_name
+        }
+
+        env {
+          name  = "AUTH_SECRET"
+          value = var.auth_secret
+        }
+
+        env {
+          name  = "AUTH_TOKEN_MESSAGES"
+          value = var.auth_token_messages
+        }
+
+        env {
+          name  = "MAIL_SMTP_SERVER"
+          value = var.smtp_hostname
+        }
+
+        env {
+          name  = "MAIL_SMTP_PORT"
+          value = var.smtp_port
+        }
+
+        env {
+          name  = "MAIL_SENDER_EMAIL"
+          value = var.mail_sender_email
+        }
+
+        env {
+          name  = "MAIL_SENDER_PASSWORD"
+          value = var.mail_sender_password
+        }
+
+        env {
+          name  = "MAIL_RECIPIENT_EMAIL"
+          value = var.mail_recipient_email
+        }
+
+        env {
+          name  = "GOOGLE_CLOUD_PROJECT"
+          value = var.project_id
+        }
+
+        resources {
+          limits = {
+            cpu    = "1"
+            memory = "1Gi"
+          }
+        }
+      }
+
+      timeout     = "3600s"
+      max_retries = 2
+    }
+  }
+
+  depends_on = [
+    google_project_service.required_apis,
+    google_service_account.gemini_assistant,
+  ]
+}
+

@@ -18,7 +18,7 @@ steps:
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/research-assistant'
     id: 'push-image'
 
-  # Deploy container image to Cloud Run
+  # Deploy container image to Cloud Run Service
   # Using deploy instead of services update to ensure image is properly updated
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
@@ -35,7 +35,33 @@ steps:
       - '--allow-unauthenticated'
       - '--service-account'
       - 'gemini-assistant@${PROJECT_ID}.iam.gserviceaccount.com'
-    id: 'deploy-cloud-run'
+    id: 'deploy-cloud-run-service'
+
+  # Deploy container image to Cloud Run Job
+  # Note: The job must be created via Terraform first with environment variables
+  # This step only updates the image and command
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'jobs'
+      - 'update'
+      - 'research-worker'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/research-assistant:${_TAG}'
+      - '--region'
+      - '${_REGION}'
+      - '--command'
+      - '/worker'
+      - '--max-retries'
+      - '2'
+      - '--task-timeout'
+      - '3600'
+      - '--cpu'
+      - '1'
+      - '--memory'
+      - '1Gi'
+    id: 'deploy-cloud-run-job'
 
 substitutions:
   _REGION: 'us-central1'

@@ -32,3 +32,20 @@ resource "google_project_iam_member" "cloudbuild_run_admin" {
   member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
 }
 
+# Grant the service account permission to execute Cloud Run Jobs
+# Note: run.jobsExecutor allows executing jobs, but we also need run.admin or run.developer
+# to use RunJob API with overrides
+resource "google_project_iam_member" "gemini_assistant_run_jobs_executor" {
+  project = var.project_id
+  role    = "roles/run.jobsExecutor"
+  member  = "serviceAccount:${google_service_account.gemini_assistant.email}"
+}
+
+# Grant the service account permission to run jobs with overrides
+# This is needed for the RunJob API call with environment variable overrides
+resource "google_project_iam_member" "gemini_assistant_run_developer" {
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.gemini_assistant.email}"
+}
+

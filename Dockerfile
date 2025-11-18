@@ -8,12 +8,17 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/research ./cmd/research
+# Build both binaries
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/server ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/worker ./cmd/worker
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=builder /app/bin/research /research
+# Copy both binaries
+COPY --from=builder /app/bin/server /server
+COPY --from=builder /app/bin/worker /worker
 
 EXPOSE 8080
 
-ENTRYPOINT [ "/research" ]
+# Default entrypoint for Cloud Run service
+ENTRYPOINT [ "/server" ]
