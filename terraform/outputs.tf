@@ -43,3 +43,14 @@ output "api_gateway_id" {
   value       = google_api_gateway_gateway.research_assistant_gateway.gateway_id
 }
 
+output "api_key" {
+  description = "API key for accessing the API Gateway (use this in the x-api-key header)"
+  value       = google_apikeys_key.api_gateway_key.key_string
+  sensitive   = true
+}
+
+output "api_key_name" {
+  description = "Name of the API key resource"
+  value       = google_apikeys_key.api_gateway_key.name
+}
+

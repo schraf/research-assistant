@@ -25,8 +25,6 @@ This guide explains how to build and deploy the Research Assistant application t
    - `google_api_key`: Your Google Gemini AI API key
    - `telegraph_api_key`: Your Telegraph API key
    - `telegraph_author_name`: Author name for Telegraph articles
-   - `auth_secret`: Secret key for token generation
-   - `auth_token_messages`: Comma-separated list of valid auth messages
    - `smtp_hostname`: SMTP server hostname (default: smtp.gmail.com)
    - `smtp_port`: SMTP server port (default: 587)
    - `mail_sender_email`: Sender email address
@@ -132,15 +130,17 @@ PROJECT_ID=your-project-id REGION=us-central1 make deploy
 
 ## Generating Auth Tokens
 
-Before you can call the service, you need to generate an auth token:
+Before you can call the service, you need to retrieve the API key from Terraform:
 
 ```bash
-export AUTH_SECRET="your-secret-from-tfvars"
-export AUTH_TOKEN_MESSAGES="message1,message2"
-./bin/genauthtoken -seed "$AUTH_SECRET"
+# Get the API key (required for API Gateway requests)
+terraform output -raw api_key
+
+# Get the API Gateway URL
+terraform output api_gateway_url
 ```
 
-This will output tokens for each message. Use one of these tokens in the `Authorization: Bearer` header.
+Use the API key in the `x-api-key` header when making requests to the API Gateway.
 
 ## Environment Variables in Cloud Run
 
@@ -149,16 +149,6 @@ All environment variables are automatically set by Terraform from your `terrafor
 ### Cloud Run Service Environment Variables
 
 - `PORT`: Defaults to 8080 (Cloud Run sets this automatically, but the service defaults to 8080 if not set)
-- `GOOGLE_API_KEY`: From terraform variable
-- `TELEGRAPH_API_KEY`: From terraform variable
-- `TELEGRAPH_AUTHOR_NAME`: From terraform variable
-- `AUTH_SECRET`: From terraform variable
-- `AUTH_TOKEN_MESSAGES`: From terraform variable
-- `MAIL_SMTP_SERVER`: From terraform variable
-- `MAIL_SMTP_PORT`: From terraform variable
-- `MAIL_SENDER_EMAIL`: From terraform variable
-- `MAIL_SENDER_PASSWORD`: From terraform variable
-- `MAIL_RECIPIENT_EMAIL`: From terraform variable
 - `GOOGLE_CLOUD_PROJECT`: From terraform variable (project_id)
 - `CLOUD_RUN_JOB_NAME`: Automatically set to the Cloud Run Job name
 - `CLOUD_RUN_JOB_REGION`: From terraform variable (region)

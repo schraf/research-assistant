@@ -13,7 +13,8 @@ The Research Assistant is a cloud-native application that leverages Google Gemin
 - **Telegraph Publishing**: Automatically publishes research reports to Telegraph
 - **Email Notifications**: Sends email notifications when research is complete
 - **Asynchronous Processing**: Research jobs are processed asynchronously via Cloud Run Jobs
-- **Token-Based Authentication**: Secure API access using bearer token authentication
+- **API Key Authentication**: Secure API access using API keys via Google Cloud API Gateway
+- **Token-Based Authentication**: Additional bearer token authentication for enhanced security
 - **Infrastructure as Code**: Terraform configuration for easy deployment
 
 ## Architecture
@@ -23,12 +24,13 @@ The application consists of three main components:
 1. **API Gateway**: Google Cloud API Gateway that provides the public-facing API
    - Routes traffic from the internet to the Cloud Run service
    - Validates requests against the OpenAPI specification
+   - Enforces API key authentication (x-api-key header)
    - Restricts direct access to the Cloud Run service
    - Uses service account authentication to invoke Cloud Run
 
 2. **Server** (`cmd/server`): HTTP API service that accepts research requests
    - Runs as a Cloud Run Service (not directly accessible from internet)
-   - Validates authentication tokens
+   - Validates authentication tokens (when accessed directly)
    - Queues research jobs to Cloud Run Jobs
 
 3. **Worker** (`cmd/worker`): Background job processor that performs the research
@@ -83,10 +85,6 @@ GOOGLE_API_KEY=your-gemini-api-key
 TELEGRAPH_API_KEY=your-telegraph-api-key
 TELEGRAPH_AUTHOR_NAME=Your Name
 
-# Authentication
-AUTH_SECRET=your-secret-key
-AUTH_TOKEN_MESSAGES=message1,message2
-
 # Email (SMTP)
 MAIL_SMTP_SERVER=smtp.gmail.com
 MAIL_SMTP_PORT=587
@@ -99,25 +97,7 @@ CLOUD_RUN_JOB_NAME=research-worker
 CLOUD_RUN_JOB_REGION=us-central1
 ```
 
-### 4. Generate Auth Token
-
-Before making API requests, generate an authentication token:
-
-```bash
-make auth-token
-```
-
-Or manually:
-
-```bash
-export AUTH_SECRET="your-secret"
-export AUTH_TOKEN_MESSAGES="message1,message2"
-./bin/genauthtoken -seed "$AUTH_SECRET"
-```
-
-Use one of the generated tokens in the `Authorization: Bearer` header.
-
-### 5. Generate Telegraph Token (if needed)
+### 4. Generate Telegraph Token (if needed)
 
 If you need to create a new Telegraph account:
 
@@ -125,7 +105,7 @@ If you need to create a new Telegraph account:
 make telegraph-token
 ```
 
-### 6. Build and Run Locally
+### 5. Build and Run Locally
 
 ```bash
 # Build all binaries
@@ -137,11 +117,11 @@ make run
 
 The server will start on `http://localhost:8080` (or the port specified by `PORT` environment variable).
 
-### 7. Make a Research Request
+### 6. Make a Research Request
 
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  "http://localhost:8080/research?topic=artificial%20intelligence"
+# Local development (no authentication required for direct access)
+curl "http://localhost:8080/research?topic=artificial%20intelligence"
 ```
 
 ## Project Structure
@@ -151,10 +131,8 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 ├── cmd/
 │   ├── server/              # HTTP API server
 │   ├── worker/              # Background job processor
-│   ├── genauthtoken/        # Auth token generator tool
 │   └── gentelegraphtoken/   # Telegraph token generator tool
 ├── internal/
-│   ├── auth/               # Authentication and token validation
 │   ├── gemini/             # Google Gemini AI client
 │   ├── mail/               # Email sending functionality
 │   ├── models/             # Data models and interfaces
@@ -201,7 +179,6 @@ make build
 This builds all binaries to the `bin/` directory:
 - `bin/server` - HTTP API server
 - `bin/worker` - Background job processor
-- `bin/genauthtoken` - Auth token generator
 - `bin/gentelegraphtoken` - Telegraph token generator
 
 ## Deployment
@@ -221,7 +198,21 @@ The application is designed to run on Google Cloud Platform. See [DEPLOYMENT.md]
    make setup-infra
    ```
 
-3. **Deploy application**:
+   This will create:
+   - Cloud Run Service and Job
+   - API Gateway with API key authentication
+   - All necessary service accounts and permissions
+
+3. **Retrieve API credentials**:
+   ```bash
+   # Get the API key (required for API Gateway requests)
+   terraform output -raw api_key
+   
+   # Get the API Gateway URL
+   terraform output api_gateway_url
+   ```
+
+4. **Deploy application**:
    ```bash
    PROJECT_ID=your-project-id make deploy
    ```
@@ -231,20 +222,37 @@ This will:
 - Push it to Artifact Registry
 - Deploy to Cloud Run Service and Cloud Run Job
 
+**Note:** The API key is automatically created and restricted to API Gateway. Store it securely as it's required for all API Gateway requests.
+
 ## API Reference
 
 The API is exposed through Google Cloud API Gateway, which provides:
 - Traffic routing and load balancing
 - Request validation based on OpenAPI specification
-- Security and access control
+- API key authentication and access control
 - The Cloud Run service is not directly accessible from the public internet
+
+### Authentication
+
+The API Gateway requires an API key for all requests. The API key is automatically created by Terraform and can be retrieved after deployment:
+
+```bash
+# Get the API key value
+terraform output -raw api_key
+
+# Get the API Gateway URL
+terraform output api_gateway_url
+```
+
+**Note:** The API key is restricted to API Gateway only and cannot be used for other Google Cloud services.
 
 ### GET /research
 
 Initiates a research job for the given topic.
 
 **Headers:**
-- `Authorization: Bearer <token>` (required)
+- `x-api-key: <api-key>` (required) - API key for API Gateway authentication
+- `Authorization: Bearer <token>` (optional) - Additional bearer token for enhanced security
 
 **Query Parameters:**
 - `topic` (required): The research topic
@@ -261,26 +269,32 @@ Initiates a research job for the given topic.
 **Example:**
 ```bash
 # Production (via API Gateway)
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  "https://your-gateway-url.run.app/research?topic=quantum%20computing"
+API_KEY=$(terraform output -raw api_key)
+GATEWAY_URL=$(terraform output -raw api_gateway_url)
 
-# Local development (bypasses API Gateway)
+curl -H "x-api-key: $API_KEY" \
+  "$GATEWAY_URL/research?topic=quantum%20computing"
+
+# With bearer token (optional)
+curl -H "x-api-key: $API_KEY" \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+  "$GATEWAY_URL/research?topic=quantum%20computing"
+
+# Local development (bypasses API Gateway, only needs bearer token)
 curl -H "Authorization: Bearer YOUR_TOKEN" \
   "http://localhost:8080/research?topic=quantum%20computing"
 ```
 
-**Note:** After deploying with Terraform, get the API Gateway URL from the Terraform outputs:
-```bash
-terraform output api_gateway_url
-```
+**Note:** 
+- When accessing via API Gateway (production), the `x-api-key` header is required
+- When accessing the Cloud Run service directly (local development), only the bearer token is needed
+- The API Gateway validates the API key before forwarding requests to the Cloud Run service
 
 ## Environment Variables
 
 ### Required for Server
 
 - `PORT`: Server port (default: 8080)
-- `AUTH_SECRET`: Secret key for token generation
-- `AUTH_TOKEN_MESSAGES`: Comma-separated list of valid auth messages
 - `CLOUD_RUN_JOB_NAME`: Name of the Cloud Run Job
 - `CLOUD_RUN_JOB_REGION`: Region of the Cloud Run Job
 - `GOOGLE_CLOUD_PROJECT`: GCP project ID
@@ -311,7 +325,6 @@ terraform output api_gateway_url
 
 ### Utility Commands
 
-- `make auth-token` - Generate authentication tokens
 - `make telegraph-token` - Generate Telegraph API token
 
 ### Terraform Commands
@@ -322,7 +335,7 @@ terraform output api_gateway_url
 - `make terraform-destroy` - Destroy infrastructure
 - `make terraform-validate` - Validate Terraform configuration
 - `make terraform-fmt` - Format Terraform files
-- `make terraform-output` - Show Terraform outputs
+- `make terraform-output` - Show Terraform outputs (including API key and Gateway URL)
 - `make setup-infra` - Setup infrastructure (init + apply)
 
 ### Deployment Commands

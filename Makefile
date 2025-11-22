@@ -11,7 +11,6 @@ all: vet build
 build: vet test
 	@mkdir -p $(BUILD_DIR)
 	go build -o $(BUILD_DIR)/gentelegraphtoken ./cmd/gentelegraphtoken
-	go build -o $(BUILD_DIR)/genauthtoken ./cmd/genauthtoken
 	go build -o $(BUILD_DIR)/server ./cmd/server
 	go build -o $(BUILD_DIR)/worker ./cmd/worker
 
@@ -27,11 +26,6 @@ telegraph-token:
 	@echo "Generating telegraph token..."
 	go run ./cmd/gentelegraphtoken
 
-# Run tool to generate an auth token
-.PHONY: auth-token
-auth-token:
-	@echo "Generating auth token..."
-	go run ./cmd/genauthtoken
 
 # Vet the code
 .PHONY: vet

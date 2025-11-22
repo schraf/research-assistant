@@ -15,9 +15,12 @@ x-google-api-management:
   backends:
     cloudrun_backend:
       address: ${CLOUD_RUN_SERVICE_URL}
+      disableAuth: true
       pathTranslation: APPEND_PATH_TO_ADDRESS
       protocol: "http/1.1"
 x-google-backend: cloudrun_backend
+security:
+  - google_api_key: []
 paths:
   /research:
     get:
@@ -35,7 +38,7 @@ paths:
         
         The API returns immediately with a request ID. The actual research is performed 
         asynchronously by a backend worker.
-      operationId: initiateResearch
+      operationId: research
       parameters:
         - name: topic
           in: query
@@ -81,6 +84,11 @@ paths:
                 error: "An internal error has occurred. (550e8400-e29b-41d4-a716-446655440000)"
 
 components:
+  securitySchemes:
+    google_api_key:
+      type: apiKey
+      name: x-api-key
+      in: header
   schemas:
     ResearchResponse:
       type: object

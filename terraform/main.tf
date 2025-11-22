@@ -31,6 +31,7 @@ resource "google_project_service" "required_apis" {
     "apigateway.googleapis.com",
     "servicemanagement.googleapis.com",
     "servicecontrol.googleapis.com",
+    "apikeys.googleapis.com",
   ])
 
   project = var.project_id
@@ -54,7 +55,7 @@ resource "google_cloud_run_v2_service" "research_assistant" {
   name     = "research-assistant"
   location = var.region
 
-  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  ingress = "INGRESS_TRAFFIC_ALL"
 
   template {
     service_account = google_service_account.gemini_assistant.email
@@ -66,16 +67,6 @@ resource "google_cloud_run_v2_service" "research_assistant" {
 
       ports {
         container_port = 8080
-      }
-
-      env {
-        name  = "AUTH_SECRET"
-        value = var.auth_secret
-      }
-
-      env {
-        name  = "AUTH_TOKEN_MESSAGES"
-        value = var.auth_token_messages
       }
 
       env {
@@ -250,5 +241,26 @@ resource "google_cloud_run_v2_service_iam_member" "api_gateway_invoker" {
   member   = "serviceAccount:${google_service_account.api_gateway.email}"
 
   depends_on = [google_service_account.api_gateway]
+}
+
+# Create API key for API Gateway
+resource "google_apikeys_key" "api_gateway_key" {
+  provider = google-beta
+  name     = "research-assistant-api-key"
+  project  = var.project_id
+
+  display_name = "Research Assistant API Gateway Key"
+
+  restrictions {
+    # Restrict the API key to API Gateway only
+    api_targets {
+      service = "apigateway.googleapis.com"
+    }
+  }
+
+  depends_on = [
+    google_project_service.required_apis,
+    google_api_gateway_api.research_assistant_api,
+  ]
 }
 

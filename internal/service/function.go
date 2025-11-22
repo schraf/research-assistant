@@ -2,13 +2,11 @@ package service
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/google/uuid"
-	"github.com/schraf/research-assistant/internal/auth"
 )
 
 func init() {
@@ -23,17 +21,6 @@ func research(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestId := uuid.NewString()
 	logger := slog.Default().With(slog.String("request_id", requestId))
-
-	// Validate bearer token
-	authHeader := r.Header.Get("Authorization")
-	if !auth.ValidateToken(authHeader) {
-		logger.Warn("unauthorized_request",
-			slog.String("auth_header_present", fmt.Sprintf("%v", authHeader != "")),
-		)
-
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 
 	// Extract topic from query parameter
 	topic := r.URL.Query().Get("topic")
