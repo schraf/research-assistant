@@ -18,13 +18,15 @@ provider "google" {
 }
 
 provider "google-beta" {
-  project = var.project_id
-  region  = var.region
+  project             = var.project_id
+  region              = var.region
+  user_project_override = true
 }
 
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
+    "cloudresourcemanager.googleapis.com",
     "run.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
@@ -55,6 +57,8 @@ resource "google_cloud_run_v2_service" "research_assistant" {
   name     = "research-assistant"
   location = var.region
 
+  # API Gateway requires the service to be publicly accessible
+  # Access is restricted via IAM to only allow the API Gateway service account
   ingress = "INGRESS_TRAFFIC_ALL"
 
   template {
@@ -233,14 +237,20 @@ resource "google_api_gateway_gateway" "research_assistant_gateway" {
   depends_on = [google_api_gateway_api_config.research_assistant_api_config]
 }
 
-# Grant API Gateway service account permission to invoke Cloud Run service
-resource "google_cloud_run_v2_service_iam_member" "api_gateway_invoker" {
+# Restrict Cloud Run service access to only the API Gateway service account
+resource "google_cloud_run_v2_service_iam_binding" "api_gateway_only" {
   location = google_cloud_run_v2_service.research_assistant.location
   name     = google_cloud_run_v2_service.research_assistant.name
   role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.api_gateway.email}"
 
-  depends_on = [google_service_account.api_gateway]
+  members = [
+    "serviceAccount:${google_service_account.api_gateway.email}",
+  ]
+
+  depends_on = [
+    google_cloud_run_v2_service.research_assistant,
+    google_service_account.api_gateway,
+  ]
 }
 
 # Create API key for API Gateway
