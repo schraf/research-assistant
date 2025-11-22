@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: ${API_ID}
+  description: |
+    An AI-powered research assistant API that automatically conducts research on topics, 
+    generates structured reports, publishes them to Telegraph, and sends email notifications.
+  version: 1.0.0
+  contact:
+    name: Research Assistant
+    url: https://github.com/schraf/research-assistant
+  license:
+    name: See LICENSE file
+    url: https://github.com/schraf/research-assistant/blob/main/LICENSE
+x-google-api-management:
+  backends:
+    cloudrun_backend:
+      address: ${CLOUD_RUN_SERVICE_URL}
+      pathTranslation: APPEND_PATH_TO_ADDRESS
+      protocol: "http/1.1"
+x-google-backend: cloudrun_backend
+paths:
+  /research:
+    get:
+      summary: Initiate a research job
+      description: |
+        Submits a research request for the specified topic. The request is queued for 
+        asynchronous processing. The research process includes:
+        
+        1. Planning: Generates a research plan with subtopics and questions
+        2. Knowledge Gathering: Iteratively gathers knowledge on each subtopic
+        3. Analysis: Analyzes collected knowledge to identify gaps
+        4. Synthesis: Synthesizes all research into a structured report
+        5. Publishing: Posts the report to Telegraph
+        6. Notification: Sends an email with the report URL
+        
+        The API returns immediately with a request ID. The actual research is performed 
+        asynchronously by a backend worker.
+      operationId: initiateResearch
+      parameters:
+        - name: topic
+          in: query
+          required: true
+          description: The research topic to investigate
+          schema:
+            type: string
+            example: "artificial intelligence"
+            minLength: 1
+      responses:
+        '200':
+          description: Research request successfully queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchResponse'
+              example:
+                success: true
+                request_id: "550e8400-e29b-41d4-a716-446655440000"
+                message: "Research request queued"
+        '400':
+          description: Bad request - missing or invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "missing required query parameter: topic"
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Unauthorized"
+        '500':
+          description: Internal server error - failed to queue research job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "An internal error has occurred. (550e8400-e29b-41d4-a716-446655440000)"
+
+components:
+  schemas:
+    ResearchResponse:
+      type: object
+      required:
+        - success
+        - request_id
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Indicates whether the request was successfully queued
+          example: true
+        request_id:
+          type: string
+          format: uuid
+          description: Unique identifier for this research request
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        message:
+          type: string
+          description: Human-readable status message
+          example: "Research request queued"
+    
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "missing required query parameter: topic"
+    

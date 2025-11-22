@@ -33,3 +33,13 @@ output "cloud_run_job_name" {
   value       = google_cloud_run_v2_job.research_worker.name
 }
 
+output "api_gateway_url" {
+  description = "URL of the API Gateway endpoint"
+  value       = google_api_gateway_gateway.research_assistant_gateway.default_hostname
+}
+
+output "api_gateway_id" {
+  description = "ID of the API Gateway"
+  value       = google_api_gateway_gateway.research_assistant_gateway.gateway_id
+}
+

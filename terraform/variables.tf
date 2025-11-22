@@ -69,7 +69,7 @@ variable "mail_recipient_email" {
 }
 
 variable "initial_image" {
-  description = "Initial container image to use (defaults to placeholder). Leave empty to use placeholder image."
+  description = "Container image to use. Leave empty to use the latest tagged image from Artifact Registry."
   type        = string
   default     = ""
 }

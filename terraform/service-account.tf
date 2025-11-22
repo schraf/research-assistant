@@ -49,3 +49,10 @@ resource "google_project_iam_member" "gemini_assistant_run_developer" {
   member  = "serviceAccount:${google_service_account.gemini_assistant.email}"
 }
 
+# Create service account for API Gateway
+resource "google_service_account" "api_gateway" {
+  account_id   = "api-gateway"
+  display_name = "API Gateway Service Account"
+  description  = "Service account for API Gateway to invoke Cloud Run service"
+}
+

@@ -18,14 +18,20 @@ The Research Assistant is a cloud-native application that leverages Google Gemin
 
 ## Architecture
 
-The application consists of two main components:
+The application consists of three main components:
 
-1. **Server** (`cmd/server`): HTTP API service that accepts research requests
-   - Runs as a Cloud Run Service
+1. **API Gateway**: Google Cloud API Gateway that provides the public-facing API
+   - Routes traffic from the internet to the Cloud Run service
+   - Validates requests against the OpenAPI specification
+   - Restricts direct access to the Cloud Run service
+   - Uses service account authentication to invoke Cloud Run
+
+2. **Server** (`cmd/server`): HTTP API service that accepts research requests
+   - Runs as a Cloud Run Service (not directly accessible from internet)
    - Validates authentication tokens
    - Queues research jobs to Cloud Run Jobs
 
-2. **Worker** (`cmd/worker`): Background job processor that performs the research
+3. **Worker** (`cmd/worker`): Background job processor that performs the research
    - Runs as a Cloud Run Job
    - Processes research requests asynchronously
    - Generates research reports using Gemini AI
@@ -227,7 +233,13 @@ This will:
 
 ## API Reference
 
-### POST /research
+The API is exposed through Google Cloud API Gateway, which provides:
+- Traffic routing and load balancing
+- Request validation based on OpenAPI specification
+- Security and access control
+- The Cloud Run service is not directly accessible from the public internet
+
+### GET /research
 
 Initiates a research job for the given topic.
 
@@ -248,8 +260,18 @@ Initiates a research job for the given topic.
 
 **Example:**
 ```bash
+# Production (via API Gateway)
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  "https://your-service-url/research?topic=quantum%20computing"
+  "https://your-gateway-url.run.app/research?topic=quantum%20computing"
+
+# Local development (bypasses API Gateway)
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:8080/research?topic=quantum%20computing"
+```
+
+**Note:** After deploying with Terraform, get the API Gateway URL from the Terraform outputs:
+```bash
+terraform output api_gateway_url
 ```
 
 ## Environment Variables
