@@ -14,7 +14,6 @@ The Research Assistant is a cloud-native application that leverages Google Gemin
 - **Email Notifications**: Sends email notifications when research is complete
 - **Asynchronous Processing**: Research jobs are processed asynchronously via Cloud Run Jobs
 - **API Key Authentication**: Secure API access using API keys via Google Cloud API Gateway
-- **Token-Based Authentication**: Additional bearer token authentication for enhanced security
 - **Infrastructure as Code**: Terraform configuration for easy deployment
 
 ## Architecture
@@ -30,7 +29,6 @@ The application consists of three main components:
 
 2. **Server** (`cmd/server`): HTTP API service that accepts research requests
    - Runs as a Cloud Run Service (not directly accessible from internet)
-   - Validates authentication tokens (when accessed directly)
    - Queues research jobs to Cloud Run Jobs
 
 3. **Worker** (`cmd/worker`): Background job processor that performs the research
@@ -258,7 +256,6 @@ Initiates a research job for the given topic.
 
 **Headers:**
 - `x-api-key: <api-key>` (required) - API key for API Gateway authentication
-- `Authorization: Bearer <token>` (optional) - Additional bearer token for enhanced security
 
 **Request Body (JSON):**
 - `topic` (string, required): The research topic
@@ -295,18 +292,7 @@ curl -X POST "$GATEWAY_URL/research" \
     "research_depth": 2
   }'
 
-# With bearer token (optional)
-curl -X POST "$GATEWAY_URL/research" \
-  -H "x-api-key: $API_KEY" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "topic": "quantum computing",
-    "resource_mode": 1,
-    "research_depth": 2
-  }'
-
-# Local development (bypasses API Gateway, only needs bearer token if enabled)
+# Local development (bypasses API Gateway
 curl -X POST "http://localhost:8080/research" \
   -H "Content-Type: application/json" \
   -d '{
@@ -318,7 +304,6 @@ curl -X POST "http://localhost:8080/research" \
 
 **Note:** 
 - When accessing via API Gateway (production), the `x-api-key` header is required
-- When accessing the Cloud Run service directly (local development), only the bearer token is needed
 - The API Gateway validates the API key before forwarding requests to the Cloud Run service
 
 ## Environment Variables
