@@ -29,15 +29,45 @@ func NewClient(ctx context.Context) (Client, error) {
 	}, nil
 }
 
-func (c *client) Ask(ctx context.Context, persona string, request string) (*string, error) {
+//--========================================================--
+//--=== RESOURCES IMPLEMENTATION
+//--========================================================--
+
+func (c *client) Ask(ctx context.Context, mode models.ResourceMode, persona string, request string) (*string, error) {
+	var model ModelIdentifier
+
+	switch mode {
+	case models.ResourceModeMinimal:
+		model = ModelIdentifierFlashLite
+	case models.ResourceModeBasic:
+		model = ModelIdentifierFlash
+	case models.ResourceModePro:
+		model = ModelIdentifierPro
+	}
+
 	c.SetSystemInstruction(persona)
-	return c.GenerateText(ctx, ModelIdentifierPro, request)
+	return c.GenerateText(ctx, model, request)
 }
 
-func (c *client) StructuredAsk(ctx context.Context, persona string, request string, schema models.Schema) (json.RawMessage, error) {
+func (c *client) StructuredAsk(ctx context.Context, mode models.ResourceMode, persona string, request string, schema models.Schema) (json.RawMessage, error) {
+	var model ModelIdentifier
+
+	switch mode {
+	case models.ResourceModeMinimal:
+		model = ModelIdentifierFlashLite
+	case models.ResourceModeBasic:
+		model = ModelIdentifierFlash
+	case models.ResourceModePro:
+		model = ModelIdentifierPro
+	}
+
 	c.SetSystemInstruction(persona)
-	return c.GenerateJson(ctx, ModelIdentifierPro, request, schema)
+	return c.GenerateJson(ctx, model, request, schema)
 }
+
+//--========================================================--
+//--=== INTERFACE IMPLEMENTATION
+//--========================================================--
 
 func (c *client) EnableLogging(filename string) (func(), error) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)

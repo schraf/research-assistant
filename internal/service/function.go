@@ -7,6 +7,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/google/uuid"
+	"github.com/schraf/research-assistant/internal/models"
 )
 
 func init() {
@@ -22,24 +23,48 @@ func research(w http.ResponseWriter, r *http.Request) {
 	requestId := uuid.NewString()
 	logger := slog.Default().With(slog.String("request_id", requestId))
 
-	// Extract topic from query parameter
-	topic := r.URL.Query().Get("topic")
-	if topic == "" {
-		logger.Error("missing_topic_parameter")
+	// Decode JSON payload
+	var payload struct {
+		Topic string               `json:"topic"`
+		Mode  models.ResourceMode  `json:"resource_mode"`
+		Depth models.ResearchDepth `json:"research_depth"`
+	}
 
-		http.Error(w, "missing required query parameter: topic", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		logger.Error("invalid_json_payload",
+			slog.String("error", err.Error()),
+		)
+
+		http.Error(w, "invalid JSON payload", http.StatusBadRequest)
 		return
 	}
 
+	if payload.Topic == "" {
+		logger.Error("missing_topic_field")
+
+		http.Error(w, "missing required field: topic", http.StatusBadRequest)
+		return
+	}
+
+	// Build research request model
+	req := models.ResearchRequest{
+		RequestId: requestId,
+		Mode:      payload.Mode,
+		Depth:     payload.Depth,
+		Topic:     payload.Topic,
+	}
+
 	logger.Info("received_research_request",
-		slog.String("topic", topic),
+		slog.String("topic", req.Topic),
+		slog.Int("resource_mode", int(req.Mode)),
+		slog.Int("research_depth", int(req.Depth)),
 	)
 
 	// Execute Cloud Run Job with research request
-	if err := executeResearchJob(ctx, logger, requestId, topic); err != nil {
+	if err := executeResearchJob(ctx, logger, req); err != nil {
 		logger.Error("failed_executing_research_job",
 			slog.String("error", err.Error()),
-			slog.String("topic", topic),
+			slog.String("topic", req.Topic),
 		)
 
 		http.Error(w, requestErrorMessage(requestId), http.StatusInternalServerError)
@@ -47,7 +72,7 @@ func research(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info("research_job_executed",
-		slog.String("topic", topic),
+		slog.String("topic", req.Topic),
 	)
 
 	// Return success response

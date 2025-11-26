@@ -43,7 +43,7 @@ type ResearchPlan struct {
 	ResearchItems []ResearchItem `json:"research_items"`
 }
 
-func GenerateResearchPlan(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string) (*ResearchPlan, error) {
+func GenerateResearchPlan(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, mode models.ResourceMode, depth models.ResearchDepth) (*ResearchPlan, error) {
 	logger.InfoContext(ctx, "generating_research_plan")
 
 	prompt, err := BuildPrompt(ResearchPlanPrompt, PromptArgs{"ResearchTopic": topic})
@@ -51,7 +51,7 @@ func GenerateResearchPlan(ctx context.Context, logger *slog.Logger, resources mo
 		return nil, fmt.Errorf("failed building research prompt: %w", err)
 	}
 
-	response, err := resources.StructuredAsk(ctx, ResearchPlanSystemPrompt, *prompt, ResearchPlanSchema())
+	response, err := resources.StructuredAsk(ctx, mode, ResearchPlanSystemPrompt, *prompt, ResearchPlanSchema())
 	if err != nil {
 		return nil, fmt.Errorf("failed building research plan: %w", err)
 	}

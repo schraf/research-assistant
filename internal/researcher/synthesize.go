@@ -52,7 +52,7 @@ type ResearchReport struct {
 	Sections []ReportSection `json:"sections"`
 }
 
-func SynthesizeReport(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, results []ResearchResult) (*ResearchReport, error) {
+func SynthesizeReport(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, results []ResearchResult, mode models.ResourceMode, depth models.ResearchDepth) (*ResearchReport, error) {
 	logger.InfoContext(ctx, "synthesizing_report")
 
 	prompt, err := BuildPrompt(SynthesizePrompt, PromptArgs{
@@ -63,7 +63,7 @@ func SynthesizeReport(ctx context.Context, logger *slog.Logger, resources models
 		return nil, fmt.Errorf("failed building research report prompt: %w", err)
 	}
 
-	response, err := resources.StructuredAsk(ctx, SynthesizeSystemPrompt, *prompt, SynthesizeReportSchema())
+	response, err := resources.StructuredAsk(ctx, mode, SynthesizeSystemPrompt, *prompt, SynthesizeReportSchema())
 	if err != nil {
 		return nil, fmt.Errorf("failed syntesizing research report: %w", err)
 	}

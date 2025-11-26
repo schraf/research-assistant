@@ -45,7 +45,7 @@ const (
 		`
 )
 
-func AnalyzeKnowledge(ctx context.Context, logger *slog.Logger, resources models.Resources, goal string, topic string, questions []string, knowledge []Knowledge) ([]string, error) {
+func AnalyzeKnowledge(ctx context.Context, logger *slog.Logger, resources models.Resources, goal string, topic string, questions []string, knowledge []Knowledge, mode models.ResourceMode, depth models.ResearchDepth) ([]string, error) {
 	logger.InfoContext(ctx, "analyzing_knowledge",
 		slog.String("topic", topic),
 	)
@@ -60,7 +60,7 @@ func AnalyzeKnowledge(ctx context.Context, logger *slog.Logger, resources models
 		return nil, fmt.Errorf("failed building analyze knowledge prompt: %w", err)
 	}
 
-	response, err := resources.StructuredAsk(ctx, AnalyzeKnowledgeSystemPrompt, *prompt, AnalyzeKnowledgeSchema())
+	response, err := resources.StructuredAsk(ctx, mode, AnalyzeKnowledgeSystemPrompt, *prompt, AnalyzeKnowledgeSchema())
 	if err != nil {
 		return nil, fmt.Errorf("failed analyze knowledge request: %w", err)
 	}

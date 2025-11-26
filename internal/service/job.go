@@ -8,14 +8,14 @@ import (
 	"log/slog"
 	"os"
 
-	"cloud.google.com/go/run/apiv2"
+	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
 	"github.com/schraf/research-assistant/internal/models"
 	"google.golang.org/api/option"
 )
 
 // executeResearchJob executes a Cloud Run Job with the research request
-func executeResearchJob(ctx context.Context, logger *slog.Logger, requestId string, topic string) error {
+func executeResearchJob(ctx context.Context, logger *slog.Logger, req models.ResearchRequest) error {
 	// Get Cloud Run Job name and region from environment
 	jobName := os.Getenv("CLOUD_RUN_JOB_NAME")
 	if jobName == "" {
@@ -32,19 +32,13 @@ func executeResearchJob(ctx context.Context, logger *slog.Logger, requestId stri
 		return fmt.Errorf("GOOGLE_CLOUD_PROJECT environment variable is not set")
 	}
 
-	// Create the research request payload
-	req := models.ResearchRequest{
-		RequestId: requestId,
-		Topic:     topic,
-	}
-
-	// Marshal to JSON and encode as base64 for CloudEvent data
-	payload, err := json.Marshal(req)
+	// Marshal to JSON and encode as base64
+	requestJson, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("failed to marshal research request: %w", err)
 	}
 
-	encodedData := base64.StdEncoding.EncodeToString(payload)
+	encodedRequest := base64.StdEncoding.EncodeToString(requestJson)
 
 	// Create Cloud Run Jobs client
 	client, err := run.NewJobsClient(ctx, option.WithQuotaProject(projectId))
@@ -56,22 +50,7 @@ func executeResearchJob(ctx context.Context, logger *slog.Logger, requestId stri
 	// Build the job execution request
 	jobPath := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", projectId, region, jobName)
 
-	// Create CloudEvent payload for the job
-	cloudEventData := map[string]interface{}{
-		"data": map[string]interface{}{
-			"message": map[string]interface{}{
-				"data": encodedData,
-			},
-		},
-	}
-
-	eventData, err := json.Marshal(cloudEventData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal CloudEvent data: %w", err)
-	}
-
-	// Execute the job with the CloudEvent data as environment variable
-	eventDataStr := string(eventData)
+	// Execute the job with the request in an environment variable
 	reqJob := &runpb.RunJobRequest{
 		Name: jobPath,
 		Overrides: &runpb.RunJobRequest_Overrides{
@@ -79,9 +58,9 @@ func executeResearchJob(ctx context.Context, logger *slog.Logger, requestId stri
 				{
 					Env: []*runpb.EnvVar{
 						{
-							Name: "CLOUDEVENT_DATA",
+							Name: "RESEARCH_REQUEST",
 							Values: &runpb.EnvVar_Value{
-								Value: eventDataStr,
+								Value: encodedRequest,
 							},
 						},
 					},
@@ -97,7 +76,8 @@ func executeResearchJob(ctx context.Context, logger *slog.Logger, requestId stri
 
 	logger.Info("job_execution_started",
 		slog.String("job_name", jobName),
-		slog.String("request_id", requestId),
+		slog.String("request_id", req.RequestId),
+		slog.String("request", encodedRequest),
 	)
 
 	return nil

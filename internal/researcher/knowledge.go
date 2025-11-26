@@ -49,7 +49,7 @@ type Knowledge struct {
 	Information string `json:"information"`
 }
 
-func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, questions []string) ([]Knowledge, error) {
+func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, questions []string, mode models.ResourceMode, depth models.ResearchDepth) ([]Knowledge, error) {
 	logger.InfoContext(ctx, "generating_knowledge",
 		slog.String("subtopic", topic),
 	)
@@ -62,7 +62,7 @@ func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources model
 		return nil, fmt.Errorf("failed building knowledge prompt: %w", err)
 	}
 
-	response, err := resources.Ask(ctx, KnowledgeSystemPrompt, *prompt)
+	response, err := resources.Ask(ctx, mode, KnowledgeSystemPrompt, *prompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed gathering knowledge: %w", err)
 	}
@@ -74,7 +74,7 @@ func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources model
 		return nil, fmt.Errorf("failed building structured knowledge prompt: %w", err)
 	}
 
-	structuredResponse, err := resources.StructuredAsk(ctx, KnowledgeStructureSystemPrompt, *structuredPrompt, KnowledgeSchema())
+	structuredResponse, err := resources.StructuredAsk(ctx, mode, KnowledgeStructureSystemPrompt, *structuredPrompt, KnowledgeSchema())
 	if err != nil {
 		return nil, fmt.Errorf("failed structuring knowledge: %w", err)
 	}

@@ -121,7 +121,13 @@ The server will start on `http://localhost:8080` (or the port specified by `PORT
 
 ```bash
 # Local development (no authentication required for direct access)
-curl "http://localhost:8080/research?topic=artificial%20intelligence"
+curl -X POST "http://localhost:8080/research" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "artificial intelligence",
+    "resource_mode": 1,
+    "research_depth": 2
+  }'
 ```
 
 ## Project Structure
@@ -246,7 +252,7 @@ terraform output api_gateway_url
 
 **Note:** The API key is restricted to API Gateway only and cannot be used for other Google Cloud services.
 
-### GET /research
+### POST /research
 
 Initiates a research job for the given topic.
 
@@ -254,8 +260,16 @@ Initiates a research job for the given topic.
 - `x-api-key: <api-key>` (required) - API key for API Gateway authentication
 - `Authorization: Bearer <token>` (optional) - Additional bearer token for enhanced security
 
-**Query Parameters:**
-- `topic` (required): The research topic
+**Request Body (JSON):**
+- `topic` (string, required): The research topic
+- `resource_mode` (integer, optional): Controls the level of detail for generated resources. Allowed values:
+  - `0` = minimal
+  - `1` = basic
+  - `2` = pro
+- `research_depth` (integer, optional): Controls how deep the research should go. Allowed values:
+  - `0` = short
+  - `1` = medium
+  - `2` = long
 
 **Response:**
 ```json
@@ -272,17 +286,34 @@ Initiates a research job for the given topic.
 API_KEY=$(terraform output -raw api_key)
 GATEWAY_URL=$(terraform output -raw api_gateway_url)
 
-curl -H "x-api-key: $API_KEY" \
-  "$GATEWAY_URL/research?topic=quantum%20computing"
+curl -X POST "$GATEWAY_URL/research" \
+  -H "x-api-key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "quantum computing",
+    "resource_mode": 1,
+    "research_depth": 2
+  }'
 
 # With bearer token (optional)
-curl -H "x-api-key: $API_KEY" \
-     -H "Authorization: Bearer YOUR_TOKEN" \
-  "$GATEWAY_URL/research?topic=quantum%20computing"
+curl -X POST "$GATEWAY_URL/research" \
+  -H "x-api-key: $API_KEY" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "quantum computing",
+    "resource_mode": 1,
+    "research_depth": 2
+  }'
 
-# Local development (bypasses API Gateway, only needs bearer token)
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  "http://localhost:8080/research?topic=quantum%20computing"
+# Local development (bypasses API Gateway, only needs bearer token if enabled)
+curl -X POST "http://localhost:8080/research" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "quantum computing",
+    "resource_mode": 1,
+    "research_depth": 2
+  }'
 ```
 
 **Note:** 

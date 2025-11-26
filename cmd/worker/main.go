@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"os"
 
-	"github.com/schraf/research-assistant/internal/worker"
+	"github.com/schraf/research-assistant/internal/models"
 	"github.com/schraf/research-assistant/internal/utils"
+	"github.com/schraf/research-assistant/internal/worker"
 )
 
 func main() {
@@ -32,76 +33,75 @@ func main() {
 
 	logger := slog.Default()
 
-	// Read CloudEvent from stdin (Cloud Run Jobs pass events via stdin)
-	var eventData []byte
-	var err error
+	// Read research request from environment variable
+	encodedRequest := os.Getenv("RESEARCH_REQUEST")
+	if encodedRequest == "" {
+		logger.Error("no_request_data",
+			slog.String("error", "no request data found in RESEARCH_REQUEST environment variable"),
+		)
 
-	// Try to read from stdin first (for Cloud Run Jobs)
-	if stat, _ := os.Stdin.Stat(); (stat.Mode() & os.ModeCharDevice) == 0 {
-		// stdin is a pipe or file
-		eventData, err = io.ReadAll(os.Stdin)
-		if err != nil {
-			logger.Error("failed_reading_stdin",
-				slog.String("error", err.Error()),
-			)
-			os.Exit(1)
-		}
-	} else {
-		// stdin is a terminal, try environment variable (for local testing)
-		eventDataStr := os.Getenv("CLOUDEVENT_DATA")
-		if eventDataStr == "" {
-			logger.Error("no_event_data",
-				slog.String("error", "no CloudEvent data found in stdin or CLOUDEVENT_DATA environment variable"),
-			)
-			os.Exit(1)
-		}
-		eventData = []byte(eventDataStr)
-	}
-
-	if len(eventData) == 0 {
-		logger.Error("empty_event_data")
 		os.Exit(1)
 	}
 
-	// Parse CloudEvent JSON
-	var cloudEvent map[string]interface{}
-	if err := json.Unmarshal(eventData, &cloudEvent); err != nil {
-		logger.Error("failed_parsing_cloudevent",
+	requestJson, err := base64.StdEncoding.DecodeString(encodedRequest)
+	if err != nil {
+		logger.Error("failed_decoding_request",
 			slog.String("error", err.Error()),
 		)
+
 		os.Exit(1)
 	}
 
-	// Extract Pub/Sub message data
-	data, ok := cloudEvent["data"].(map[string]interface{})
-	if !ok {
-		logger.Error("invalid_cloudevent_data",
-			slog.String("error", "cloudEvent.data is not a map"),
+	var request models.ResearchRequest
+	if err := json.Unmarshal(requestJson, &request); err != nil {
+		logger.Error("failed_parsing_request_json",
+			slog.String("error", err.Error()),
 		)
+
 		os.Exit(1)
 	}
 
-	message, ok := data["message"].(map[string]interface{})
-	if !ok {
-		logger.Error("invalid_pubsub_message",
-			slog.String("error", "data.message is not a map"),
+	logger = logger.With(slog.String("request_id", request.RequestId))
+
+	// Validate request fields
+	if request.RequestId == "" {
+		logger.Error("invalid_request_id",
+			slog.String("error", "missing request id"),
 		)
+
 		os.Exit(1)
 	}
 
-	messageData, ok := message["data"].(string)
-	if !ok {
-		logger.Error("invalid_message_data",
-			slog.String("error", "message.data is not a string"),
+	if request.Topic == "" {
+		logger.Error("invalid_request_id",
+			slog.String("error", "missing topic"),
 		)
+
+		os.Exit(1)
+	}
+
+	if err := request.Depth.Validate(); err != nil {
+		logger.Error("invalid_request_id",
+			slog.String("error", err.Error()),
+		)
+
+		os.Exit(1)
+	}
+
+	if err := request.Mode.Validate(); err != nil {
+		logger.Error("invalid_request_id",
+			slog.String("error", err.Error()),
+		)
+
 		os.Exit(1)
 	}
 
 	// Process the research job
-	if err := worker.ProcessResearchJob(ctx, logger, messageData); err != nil {
+	if err := worker.ProcessResearchJob(ctx, logger, request); err != nil {
 		logger.Error("job_failed",
 			slog.String("error", err.Error()),
 		)
+
 		os.Exit(1)
 	}
 
