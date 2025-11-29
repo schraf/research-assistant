@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/schraf/research-assistant/internal/models"
+	"github.com/schraf/assistant/pkg/models"
 )
 
 const (
@@ -42,18 +42,8 @@ const (
 		`
 )
 
-type ReportSection struct {
-	SectionTitle string   `json:"section_title"`
-	Paragraphs   []string `json:"paragraphs"`
-}
-
-type ResearchReport struct {
-	Title    string          `json:"title"`
-	Sections []ReportSection `json:"sections"`
-}
-
-func SynthesizeReport(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, results []ResearchResult, mode models.ResourceMode, depth models.ResearchDepth) (*ResearchReport, error) {
-	logger.InfoContext(ctx, "synthesizing_report")
+func SynthesizeReport(ctx context.Context, assistant models.Assistant, topic string, results []ResearchResult, depth ResearchDepth) (*models.Document, error) {
+	slog.InfoContext(ctx, "synthesizing_report")
 
 	prompt, err := BuildPrompt(SynthesizePrompt, PromptArgs{
 		"ResearchTopic":   topic,
@@ -63,22 +53,22 @@ func SynthesizeReport(ctx context.Context, logger *slog.Logger, resources models
 		return nil, fmt.Errorf("failed building research report prompt: %w", err)
 	}
 
-	response, err := resources.StructuredAsk(ctx, mode, SynthesizeSystemPrompt, *prompt, SynthesizeReportSchema())
+	response, err := assistant.StructuredAsk(ctx, SynthesizeSystemPrompt, *prompt, SynthesizeReportSchema())
 	if err != nil {
 		return nil, fmt.Errorf("failed syntesizing research report: %w", err)
 	}
 
-	var report ResearchReport
+	var doc models.Document
 
-	if err := json.Unmarshal(response, &report); err != nil {
+	if err := json.Unmarshal(response, &doc); err != nil {
 		return nil, fmt.Errorf("failed parsing research report: %w", err)
 	}
 
-	return &report, nil
+	return &doc, nil
 }
 
-func SynthesizeReportSchema() models.Schema {
-	return models.Schema{
+func SynthesizeReportSchema() map[string]any {
+	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"title": map[string]any{
@@ -91,7 +81,7 @@ func SynthesizeReportSchema() models.Schema {
 				"items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"section_title": map[string]any{
+						"title": map[string]any{
 							"type":        "string",
 							"description": "A title for the section in the report",
 						},
@@ -104,7 +94,7 @@ func SynthesizeReportSchema() models.Schema {
 						},
 					},
 					"required": []string{
-						"section_title",
+						"title",
 						"paragraphs",
 					},
 				},

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/schraf/research-assistant/internal/models"
+	"github.com/schraf/assistant/pkg/models"
 )
 
 const (
@@ -45,8 +45,8 @@ const (
 		`
 )
 
-func AnalyzeKnowledge(ctx context.Context, logger *slog.Logger, resources models.Resources, goal string, topic string, questions []string, knowledge []Knowledge, mode models.ResourceMode, depth models.ResearchDepth) ([]string, error) {
-	logger.InfoContext(ctx, "analyzing_knowledge",
+func AnalyzeKnowledge(ctx context.Context, assistant models.Assistant, goal string, topic string, questions []string, knowledge []Knowledge, depth ResearchDepth) ([]string, error) {
+	slog.InfoContext(ctx, "analyzing_knowledge",
 		slog.String("topic", topic),
 	)
 
@@ -60,7 +60,7 @@ func AnalyzeKnowledge(ctx context.Context, logger *slog.Logger, resources models
 		return nil, fmt.Errorf("failed building analyze knowledge prompt: %w", err)
 	}
 
-	response, err := resources.StructuredAsk(ctx, mode, AnalyzeKnowledgeSystemPrompt, *prompt, AnalyzeKnowledgeSchema())
+	response, err := assistant.StructuredAsk(ctx, AnalyzeKnowledgeSystemPrompt, *prompt, AnalyzeKnowledgeSchema())
 	if err != nil {
 		return nil, fmt.Errorf("failed analyze knowledge request: %w", err)
 	}
@@ -74,8 +74,8 @@ func AnalyzeKnowledge(ctx context.Context, logger *slog.Logger, resources models
 	return furtherQuestions, nil
 }
 
-func AnalyzeKnowledgeSchema() models.Schema {
-	return models.Schema{
+func AnalyzeKnowledgeSchema() map[string]any {
+	return map[string]any{
 		"type":        "array",
 		"description": "A list of follow up research questions to be answered",
 		"items": map[string]any{

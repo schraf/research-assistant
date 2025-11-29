@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/schraf/research-assistant/internal/models"
+	"github.com/schraf/assistant/pkg/models"
 )
 
 const (
@@ -49,8 +49,8 @@ type Knowledge struct {
 	Information string `json:"information"`
 }
 
-func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, questions []string, mode models.ResourceMode, depth models.ResearchDepth) ([]Knowledge, error) {
-	logger.InfoContext(ctx, "generating_knowledge",
+func GenerateKnowledge(ctx context.Context, assistant models.Assistant, topic string, questions []string, depth ResearchDepth) ([]Knowledge, error) {
+	slog.InfoContext(ctx, "generating_knowledge",
 		slog.String("subtopic", topic),
 	)
 
@@ -62,7 +62,7 @@ func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources model
 		return nil, fmt.Errorf("failed building knowledge prompt: %w", err)
 	}
 
-	response, err := resources.Ask(ctx, mode, KnowledgeSystemPrompt, *prompt)
+	response, err := assistant.Ask(ctx, KnowledgeSystemPrompt, *prompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed gathering knowledge: %w", err)
 	}
@@ -74,7 +74,7 @@ func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources model
 		return nil, fmt.Errorf("failed building structured knowledge prompt: %w", err)
 	}
 
-	structuredResponse, err := resources.StructuredAsk(ctx, mode, KnowledgeStructureSystemPrompt, *structuredPrompt, KnowledgeSchema())
+	structuredResponse, err := assistant.StructuredAsk(ctx, KnowledgeStructureSystemPrompt, *structuredPrompt, KnowledgeSchema())
 	if err != nil {
 		return nil, fmt.Errorf("failed structuring knowledge: %w", err)
 	}
@@ -88,8 +88,8 @@ func GenerateKnowledge(ctx context.Context, logger *slog.Logger, resources model
 	return knowledge, nil
 }
 
-func KnowledgeSchema() models.Schema {
-	return models.Schema{
+func KnowledgeSchema() map[string]any {
+	return map[string]any{
 		"type": "array",
 		"items": map[string]any{
 			"type": "object",

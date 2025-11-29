@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/schraf/research-assistant/internal/models"
+	"github.com/schraf/assistant/pkg/models"
 )
 
 const (
@@ -43,15 +43,15 @@ type ResearchPlan struct {
 	ResearchItems []ResearchItem `json:"research_items"`
 }
 
-func GenerateResearchPlan(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, mode models.ResourceMode, depth models.ResearchDepth) (*ResearchPlan, error) {
-	logger.InfoContext(ctx, "generating_research_plan")
+func GenerateResearchPlan(ctx context.Context, assistant models.Assistant, topic string, depth ResearchDepth) (*ResearchPlan, error) {
+	slog.InfoContext(ctx, "generating_research_plan")
 
 	prompt, err := BuildPrompt(ResearchPlanPrompt, PromptArgs{"ResearchTopic": topic})
 	if err != nil {
 		return nil, fmt.Errorf("failed building research prompt: %w", err)
 	}
 
-	response, err := resources.StructuredAsk(ctx, mode, ResearchPlanSystemPrompt, *prompt, ResearchPlanSchema())
+	response, err := assistant.StructuredAsk(ctx, ResearchPlanSystemPrompt, *prompt, ResearchPlanSchema())
 	if err != nil {
 		return nil, fmt.Errorf("failed building research plan: %w", err)
 	}
@@ -65,8 +65,8 @@ func GenerateResearchPlan(ctx context.Context, logger *slog.Logger, resources mo
 	return &plan, nil
 }
 
-func ResearchPlanSchema() models.Schema {
-	return models.Schema{
+func ResearchPlanSchema() map[string]any {
+	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"goal": map[string]any{

@@ -1,20 +1,3 @@
-# Terraform
-terraform/.terraform/
-terraform/.terraform.lock.hcl
-terraform/terraform.tfvars
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
-terraform/terraform.tfstate.*.backup
-terraform/*.tfplan
-
-# Go
-function/deployment.zip
-function/go.sum
-
-# Environment files
-.env
-.env.local
-.env.production
 
 # IDE files
 .vscode/
@@ -27,13 +10,9 @@ function/go.sum
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-logs/
-
 # Temporary files
 tmp/
 temp/
 
 # Build files
-bin/
+researcher

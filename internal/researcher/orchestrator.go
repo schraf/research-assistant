@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/schraf/research-assistant/internal/models"
+	"github.com/schraf/assistant/pkg/models"
 )
 
 type ResearchResult struct {
@@ -14,8 +14,8 @@ type ResearchResult struct {
 	Error     error
 }
 
-func ResearchTopic(ctx context.Context, logger *slog.Logger, resources models.Resources, topic string, mode models.ResourceMode, depth models.ResearchDepth) (*ResearchReport, error) {
-	plan, err := GenerateResearchPlan(ctx, logger, resources, topic, mode, depth)
+func ResearchTopic(ctx context.Context, assistant models.Assistant, topic string, depth ResearchDepth) (*models.Document, error) {
+	plan, err := GenerateResearchPlan(ctx, assistant, topic, depth)
 	if err != nil {
 		return nil, err
 	}
@@ -30,13 +30,13 @@ func ResearchTopic(ctx context.Context, logger *slog.Logger, resources models.Re
 		go func() {
 			defer group.Done()
 
-			logger.Info("starting_research",
+			slog.Info("starting_research",
 				slog.String("topic", item.SubTopic),
 			)
 
-			resultsChan <- ResearchSubTopic(ctx, logger, resources, plan.Goal, item.SubTopic, item.Questions, mode, depth)
+			resultsChan <- ResearchSubTopic(ctx, assistant, plan.Goal, item.SubTopic, item.Questions, depth)
 
-			logger.Info("finished_research",
+			slog.Info("finished_research",
 				slog.String("topic", item.SubTopic),
 			)
 
@@ -52,15 +52,15 @@ func ResearchTopic(ctx context.Context, logger *slog.Logger, resources models.Re
 		results = append(results, result)
 	}
 
-	report, err := SynthesizeReport(ctx, logger, resources, topic, results, mode, depth)
+	doc, err := SynthesizeReport(ctx, assistant, topic, results, depth)
 	if err != nil {
 		return nil, err
 	}
 
-	return report, nil
+	return doc, nil
 }
 
-func ResearchSubTopic(ctx context.Context, logger *slog.Logger, resources models.Resources, goal string, topic string, questions []string, mode models.ResourceMode, depth models.ResearchDepth) ResearchResult {
+func ResearchSubTopic(ctx context.Context, assistant models.Assistant, goal string, topic string, questions []string, depth ResearchDepth) ResearchResult {
 	result := ResearchResult{
 		Topic:     topic,
 		Knowledge: []Knowledge{},
@@ -69,16 +69,16 @@ func ResearchSubTopic(ctx context.Context, logger *slog.Logger, resources models
 	maxIterations := 0
 
 	switch depth {
-	case models.ResearchDepthShort:
+	case ResearchDepthShort:
 		maxIterations = 0
-	case models.ResearchDepthMedium:
+	case ResearchDepthMedium:
 		maxIterations = 2
-	case models.ResearchDepthLong:
+	case ResearchDepthLong:
 		maxIterations = 5
 	}
 
 	// build initial knowledge
-	initialKnowledge, err := GenerateKnowledge(ctx, logger, resources, topic, questions, mode, depth)
+	initialKnowledge, err := GenerateKnowledge(ctx, assistant, topic, questions, depth)
 	if err != nil {
 		result.Error = err
 		return result
@@ -87,7 +87,7 @@ func ResearchSubTopic(ctx context.Context, logger *slog.Logger, resources models
 	result.Knowledge = append(result.Knowledge, initialKnowledge...)
 
 	for iteration := 0; iteration < maxIterations; iteration++ {
-		questions, err := AnalyzeKnowledge(ctx, logger, resources, goal, topic, questions, result.Knowledge, mode, depth)
+		questions, err := AnalyzeKnowledge(ctx, assistant, goal, topic, questions, result.Knowledge, depth)
 		if err != nil {
 			result.Error = err
 			break
@@ -97,7 +97,7 @@ func ResearchSubTopic(ctx context.Context, logger *slog.Logger, resources models
 			break
 		}
 
-		newKnowledge, err := GenerateKnowledge(ctx, logger, resources, topic, questions, mode, depth)
+		newKnowledge, err := GenerateKnowledge(ctx, assistant, topic, questions, depth)
 		if err != nil {
 			result.Error = err
 			break
