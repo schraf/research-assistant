@@ -4,7 +4,7 @@ go 1.24.0
 
 toolchain go1.24.9
 
-require github.com/schraf/assistant v0.0.0-20251129130538-d24ca2f2e719
+require github.com/schraf/assistant v1.0.0
 
 require (
 	cloud.google.com/go v0.121.6 // indirect
