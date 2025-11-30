@@ -57,6 +57,11 @@ func ResearchTopic(ctx context.Context, assistant models.Assistant, topic string
 		return nil, err
 	}
 
+	doc, err = EditReport(ctx, assistant, doc)
+	if err != nil {
+		return nil, err
+	}
+
 	return doc, nil
 }
 
