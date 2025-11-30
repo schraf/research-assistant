@@ -33,6 +33,8 @@ func (g *generator) Generate(ctx context.Context, request models.ContentRequest,
 		depth = researcher.ResearchDepth(v)
 	case int64:
 		depth = researcher.ResearchDepth(v)
+	case float64:
+		depth = researcher.ResearchDepth(v)
 	default:
 		return nil, fmt.Errorf("no research depth")
 	}
