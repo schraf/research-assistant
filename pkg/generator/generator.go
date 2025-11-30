@@ -25,8 +25,15 @@ func (g *generator) Generate(ctx context.Context, request models.ContentRequest,
 		return nil, fmt.Errorf("no research topic")
 	}
 
-	depth, ok := request.Body["research_depth"].(researcher.ResearchDepth)
-	if !ok {
+	var depth researcher.ResearchDepth
+	switch v := request.Body["research_depth"].(type) {
+	case researcher.ResearchDepth:
+		depth = v
+	case int:
+		depth = researcher.ResearchDepth(v)
+	case int64:
+		depth = researcher.ResearchDepth(v)
+	default:
 		return nil, fmt.Errorf("no research depth")
 	}
 
