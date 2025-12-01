@@ -1,7 +1,8 @@
 all: vet build
 
 build: vet test
-	go build -o researcher ./cmd
+	@mkdir -p bin
+	go build -o bin/researcher ./cmd
 
 run:
 	@echo "Running..."
