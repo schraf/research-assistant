@@ -2,85 +2,65 @@ package researcher
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
-
-	"github.com/schraf/assistant/pkg/models"
 )
 
 const (
 	AnalyzeKnowledgeSystemPrompt = `
 		You are an expert Research Analyist. Your sole task is
 		to review the information that other researchers have
-		gathers and verify if it satisfies the questions for
-		the given subtopic of the provided research goal.
+		gathered.
 		`
 
 	AnalyzeKnowledgePrompt = `
-		## Research Goal
-		{{.ResearchGoal}}
+		## Topic
+		{{.Topic}}
 
-		## Research Subtopic
-		{{.ResearchTopic}}
-
-		## Questions To Answer
-		{{range $index, $question := .Questions}}
-		{{$index}}. {{$question}}
-		{{end}}
-
-		## Information Gathered
-		{{range $index, $knowledge := .Knowledge}}
-		{{$index}}. {{$knowledge.Topic}}
-		{{$knowledge.Information}}
-
-		{{end}}
+		## Researched Information
+		{{.Knowledge}}
 		
 		## Goal 
-		Review the information gathered and see if it sufficiently answers all
-		of the questions in enough detail to fullfil the information gathering
-		phase of research for this particular subtopic. If there are gaps in
-		knowledge provide a list of further research questions for this
-		subtopic.  
+		Review the information gathered and see if there are any gaps in
+		information about the topic that would require further information
+		before we can synthesize a report about this topic. If you find
+		that there are gaps in information, perform a series of web searches
+		and return only new findings that we should add to our research.
 		`
 )
 
-func AnalyzeKnowledge(ctx context.Context, assistant models.Assistant, goal string, topic string, questions []string, knowledge []Knowledge, depth ResearchDepth) ([]string, error) {
-	slog.InfoContext(ctx, "analyzing_knowledge",
-		slog.String("topic", topic),
-	)
+func (p *Pipeline) AnalyzeKnowledge(ctx context.Context, topic string, in <-chan string, out chan<- string) error {
+	defer close(out)
 
-	prompt, err := BuildPrompt(AnalyzeKnowledgePrompt, PromptArgs{
-		"ResearchGoal":  goal,
-		"ResearchTopic": topic,
-		"Questions":     questions,
-		"Knowledge":     knowledge,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed building analyze knowledge prompt: %w", err)
+	for knowledge := range in {
+		slog.Info("analyzing_knowledge",
+			slog.String("topic", topic),
+			slog.String("knowledge", knowledge),
+		)
+
+		prompt, err := BuildPrompt(AnalyzeKnowledgePrompt, PromptArgs{
+			"Topic":     topic,
+			"Knowledge": knowledge,
+		})
+		if err != nil {
+			return err
+		}
+
+		analysis, err := p.assistant.Ask(ctx, AnalyzeKnowledgeSystemPrompt, *prompt)
+		if err != nil {
+			return err
+		}
+
+		slog.Info("analyzed_knowledge",
+			slog.String("topic", topic),
+			slog.String("analysis", *analysis),
+		)
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case out <- (knowledge + "\n" + *analysis):
+		}
 	}
 
-	response, err := assistant.StructuredAsk(ctx, AnalyzeKnowledgeSystemPrompt, *prompt, AnalyzeKnowledgeSchema())
-	if err != nil {
-		return nil, fmt.Errorf("failed analyze knowledge request: %w", err)
-	}
-
-	var furtherQuestions []string
-
-	if err := json.Unmarshal(response, &furtherQuestions); err != nil {
-		return nil, fmt.Errorf("failed parsing analyze knowledge response: %w", err)
-	}
-
-	return furtherQuestions, nil
-}
-
-func AnalyzeKnowledgeSchema() map[string]any {
-	return map[string]any{
-		"type":        "array",
-		"description": "A list of follow up research questions to be answered",
-		"items": map[string]any{
-			"type":        "string",
-			"description": "Research question",
-		},
-	}
+	return nil
 }

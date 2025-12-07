@@ -2,111 +2,64 @@ package researcher
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
-
-	"github.com/schraf/assistant/pkg/models"
 )
 
 const (
 	KnowledgeSystemPrompt = `
 		You are an expert Researcher. Your sole task is
-		to search the web to gather information about a
-		topic by answering a set of questions.
+		to read through raw researched information and organize
+		it into a comprehensive and conheret knowledge base.
 		`
 
 	KnowledgePrompt = `
-		## Research Topic
-		{{.ResearchTopic}}
-
-		## Questions To Answer
-		{{range $index, $question := .Questions}}
-		{{$index}}. {{$question}}
+		## Information
+		{{range $index, $information := .Information}}
+		{{$index}}. {{$information}}
 		{{end}}
 		
 		## Goal 
-		Provide information from searching the web that answers
-		the questions. Be detailed in the information you provide
-		and clearly specify what information is answering each 
-		question.
-		`
-
-	KnowledgeStructureSystemPrompt = `
-		You are an expert Researcher organizer. Your sole task is
-		take information gathered and structure it into an
-		organized list of pairs of topics and information.
-		`
-
-	KnowledgeStructurePrompt = `
-		## Information Gathered
-		{{.Information}}
+		Analyze the raw information provided and produce a well
+		organized knowledge base. The knowledge base should be
+		a series of paragraphs. There is no need to add headings.
 		`
 )
 
-type Knowledge struct {
-	Topic       string `json:"topic"`
-	Information string `json:"information"`
-}
+func (p *Pipeline) BuildKnowledge(ctx context.Context, in <-chan string, out chan<- string) error {
+	defer close(out)
 
-func GenerateKnowledge(ctx context.Context, assistant models.Assistant, topic string, questions []string, depth ResearchDepth) ([]Knowledge, error) {
-	slog.InfoContext(ctx, "generating_knowledge",
-		slog.String("subtopic", topic),
+	aggregated := []string{}
+
+	for information := range in {
+		aggregated = append(aggregated, information)
+	}
+
+	slog.Info("building_knowledge",
+		slog.Any("information", aggregated),
 	)
 
 	prompt, err := BuildPrompt(KnowledgePrompt, PromptArgs{
-		"ResearchTopic": topic,
-		"Questions":     questions,
+		"Information": aggregated,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed building knowledge prompt: %w", err)
+		return err
 	}
 
-	response, err := assistant.Ask(ctx, KnowledgeSystemPrompt, *prompt)
+	knowledge, err := p.assistant.Ask(ctx, KnowledgeSystemPrompt, *prompt)
 	if err != nil {
-		return nil, fmt.Errorf("failed gathering knowledge: %w", err)
+		return err
 	}
 
-	structuredPrompt, err := BuildPrompt(KnowledgeStructurePrompt, PromptArgs{
-		"Information": *response,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed building structured knowledge prompt: %w", err)
+	slog.Info("built_knowledge",
+		slog.Any("information", aggregated),
+		slog.String("knowledge", *knowledge),
+	)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case out <- *knowledge:
 	}
 
-	structuredResponse, err := assistant.StructuredAsk(ctx, KnowledgeStructureSystemPrompt, *structuredPrompt, KnowledgeSchema())
-	if err != nil {
-		return nil, fmt.Errorf("failed structuring knowledge: %w", err)
-	}
-
-	var knowledge []Knowledge
-
-	if err := json.Unmarshal(structuredResponse, &knowledge); err != nil {
-		return nil, fmt.Errorf("failed parsing structured knowledge: %w", err)
-	}
-
-	return knowledge, nil
-}
-
-func KnowledgeSchema() map[string]any {
-	return map[string]any{
-		"type": "array",
-		"items": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"topic": map[string]any{
-					"type":        "string",
-					"description": "A short description of the topic this information covers.",
-				},
-				"information": map[string]any{
-					"type":        "string",
-					"description": "A detailed report of information about this topic based on previously researched resources.",
-				},
-			},
-			"required": []string{
-				"topic",
-				"information",
-			},
-		},
-	}
+	return nil
 }

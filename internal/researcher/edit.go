@@ -3,7 +3,6 @@ package researcher
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 
 	"github.com/schraf/assistant/pkg/models"
@@ -25,9 +24,6 @@ const (
 	EditPrompt = `
 		# Research Report to Edit
 
-		## Title
-		{{.Title}}
-
 		## Sections
 
 		{{range $index, $section := .Sections}}
@@ -47,36 +43,59 @@ const (
 		4. Transitions between sections are smooth and logical
 		5. The overall report reads as a unified, well-structured document
 
-		Maintain the same structure (title and sections with paragraphs) but refine
+		Maintain the same structure (sections with paragraphs) but refine
 		the content to eliminate redundancy and improve flow. If information is
 		repeated across sections, consolidate it appropriately or remove redundant
 		instances. Ensure each section contributes unique value to the overall report.
+		Decided upon a title for the report.
+
+		Make sure the final document does not include any markdown, LaTeX, HTML tags or 
+		any special characters.
 		`
 )
 
-func EditReport(ctx context.Context, assistant models.Assistant, doc *models.Document) (*models.Document, error) {
-	slog.InfoContext(ctx, "editing_report")
+func (p *Pipeline) EditDocument(ctx context.Context, in <-chan models.DocumentSection) (*models.Document, error) {
+	aggregated := []models.DocumentSection{}
 
-	prompt, err := BuildPrompt(EditPrompt, doc)
+	for section := range in {
+		aggregated = append(aggregated, section)
+	}
+
+	slog.Info("editing_document",
+		slog.Int("sections_count", len(aggregated)),
+	)
+
+	draft := models.Document{
+		Sections: aggregated,
+	}
+
+	prompt, err := BuildPrompt(EditPrompt, draft)
 	if err != nil {
-		return nil, fmt.Errorf("failed building edit prompt: %w", err)
+		return nil, err
 	}
 
-	response, err := assistant.StructuredAsk(ctx, EditSystemPrompt, *prompt, EditReportSchema())
+	response, err := p.assistant.StructuredAsk(ctx, EditSystemPrompt, *prompt, DocumentSchema())
 	if err != nil {
-		return nil, fmt.Errorf("failed editing research report: %w", err)
+		return nil, err
 	}
 
-	var editedDoc models.Document
+	sanitized := Sanitize(response)
 
-	if err := json.Unmarshal(response, &editedDoc); err != nil {
-		return nil, fmt.Errorf("failed parsing edited research report: %w", err)
+	var doc models.Document
+
+	if err := json.Unmarshal(sanitized, &doc); err != nil {
+		return nil, err
 	}
 
-	return &editedDoc, nil
+	slog.Info("edited_document",
+		slog.Int("draft_length", DocumentLength(&draft)),
+		slog.Int("final_length", DocumentLength(&doc)),
+	)
+
+	return &doc, nil
 }
 
-func EditReportSchema() map[string]any {
+func DocumentSchema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
