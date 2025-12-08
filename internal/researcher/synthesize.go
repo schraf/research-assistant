@@ -23,10 +23,8 @@ const (
 		{{.Knowledge}}
 
 		# Goal 
-		Create a detailed series of paragaphs about the given topic using the 
-		information that has been researched and provided. The paragraphs should 
-		be in in the english language and follow correct grammar. Do not include
-		any markdown, LaTeX, HTML tags or any special characters.
+		1. Create a detailed series of 4 to 8 paragaphs about the given topic using the information that has been researched and provided. 
+		2. Each paragraph should be between 4 to 8 sentences in length.
 		`
 )
 

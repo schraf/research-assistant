@@ -11,15 +11,9 @@ import (
 
 const (
 	EditSystemPrompt = `
-		You are an expert research report editor. Your role is to review research
-		reports and ensure they flow cohesively, with no repetition of content
-		between sections. Each section should build upon previous sections without
-		reiterating the same information. The report should read as a unified,
-		well-structured document where each section contributes unique value and
-		transitions smoothly to the next. As a research report editor, you have
-		extensive experience in academic and professional research writing, and you
-		know how to refine reports to eliminate redundancy while maintaining clarity
-		and coherence.
+		You are an expert editor. Your role is to review documents and ensure that
+		each section contributes unique value and transitions smoothly to the next. 
+		You do not perform any further research or add new content.
 		`
 
 	EditPrompt = `
@@ -43,17 +37,8 @@ const (
 		3. Each section builds upon previous sections without reiterating information
 		4. Transitions between sections are smooth and logical
 		5. The overall report reads as a unified, well-structured document
-
-		No not perform any further research or do any web searches.
-
-		Maintain the same structure (sections with paragraphs) but refine
-		the content to eliminate redundancy and improve flow. If information is
-		repeated across sections, consolidate it appropriately or remove redundant
-		instances. Ensure each section contributes unique value to the overall report.
-		Decided upon a title for the report.
-
-		Make sure the final document does not include any markdown, LaTeX, HTML tags or 
-		any special characters.
+		6. Decided on a title for the report
+		7. Remove any markdown, LaTeX, HTML tags, or any escape characters.
 		`
 )
 
