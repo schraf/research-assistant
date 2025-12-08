@@ -1,6 +1,6 @@
-all: vet build
+all: deps vet test build
 
-build: vet test
+build:
 	@mkdir -p bin
 	go build -o bin/researcher ./cmd
 
@@ -18,7 +18,7 @@ fmt:
 
 test:
 	@echo "Running tests..."
-	go test -v ./...
+	go test -v -race -timeout 10s ./...
 
 clean:
 	@echo "Cleaning build artifacts..."
