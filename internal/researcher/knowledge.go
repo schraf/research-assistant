@@ -36,7 +36,7 @@ func (p *Pipeline) BuildKnowledge(ctx context.Context, in <-chan string, out cha
 	}
 
 	slog.Info("building_knowledge",
-		slog.Any("information", aggregated),
+		slog.Int("information", len(aggregated)),
 	)
 
 	prompt, err := BuildPrompt(KnowledgePrompt, PromptArgs{
@@ -52,8 +52,8 @@ func (p *Pipeline) BuildKnowledge(ctx context.Context, in <-chan string, out cha
 	}
 
 	slog.Info("built_knowledge",
-		slog.Any("information", aggregated),
-		slog.String("knowledge", *knowledge),
+		slog.Int("information", len(aggregated)),
+		slog.Int("knowledge", len(*knowledge)),
 	)
 
 	select {

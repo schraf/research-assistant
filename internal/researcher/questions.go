@@ -53,7 +53,7 @@ func (p *Pipeline) GenerateQuestions(ctx context.Context, topic string, out chan
 
 	slog.Info("generated_questions",
 		slog.String("topic", topic),
-		slog.Any("questions", questions),
+		slog.Int("questions", len(questions)),
 	)
 
 	for _, question := range questions {

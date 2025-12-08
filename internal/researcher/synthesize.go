@@ -2,6 +2,7 @@ package researcher
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -45,32 +46,65 @@ func (p *Pipeline) SynthesizeKnowledge(ctx context.Context, topic string, in <-c
 			return fmt.Errorf("synthesize knowledge error: %w", err)
 		}
 
-		response, err := p.assistant.Ask(ctx, SynthesizeSystemPrompt, *prompt)
-		if err != nil {
-			return fmt.Errorf("synthesize knowledge error: assistant ask: %w", err)
+		schema := map[string]any{
+			"type":        "array",
+			"description": "list of paragraphs",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "name or summary of the paragraph",
+					},
+					"body": map[string]any{
+						"type":        "string",
+						"description": "entire body of the paragraph",
+					},
+				},
+				"required": []string{"name", "body"},
+			},
 		}
 
-		paragraphs, err := GenerateList(ctx, p.assistant, *response)
+		response, err := p.assistant.StructuredAsk(ctx, SynthesizeSystemPrompt, *prompt, schema)
 		if err != nil {
-			return fmt.Errorf("synthesize knowledge error: %w", err)
+			return fmt.Errorf("synthesize knowledge error: assistant structured ask: %w", err)
+		}
+
+		var paragraphs []struct {
+			Name string `json:"name"`
+			Body string `json:"body"`
+		}
+
+		if err := json.Unmarshal(response, &paragraphs); err != nil {
+			return fmt.Errorf("synthesize knowledge error: json unmarshal: %w", err)
 		}
 
 		length := 0
+		summaries := []string{}
 
 		for _, paragraph := range paragraphs {
-			length += len(paragraph)
+			length += len(paragraph.Body)
+			summaries = append(summaries, paragraph.Name)
 		}
 
 		slog.Info("synthesized_knowledge",
 			slog.String("topic", topic),
 			slog.Int("length", length),
-			slog.Any("paragraphs", paragraphs),
+			slog.Any("summary", summaries),
 		)
+
+		section := models.DocumentSection{
+			Title: topic,
+		}
+
+		for _, paragraph := range paragraphs {
+			section.Paragraphs = append(section.Paragraphs, paragraph.Body)
+		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case out <- models.DocumentSection{Title: topic, Paragraphs: paragraphs}:
+		case out <- section:
 		}
 	}
 
