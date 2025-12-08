@@ -33,11 +33,9 @@ func GenerateList(ctx context.Context, assistant models.Assistant, input string)
 		return nil, fmt.Errorf("generate list error: assistant structured ask: %w", err)
 	}
 
-	sanitized := Sanitize(response)
-
 	var items []string
 
-	if err := json.Unmarshal(sanitized, &items); err != nil {
+	if err := json.Unmarshal(response, &items); err != nil {
 		return nil, fmt.Errorf("generate list error: unmarshal json: %w", err)
 	}
 
@@ -54,43 +52,4 @@ func DocumentLength(doc *models.Document) int {
 	}
 
 	return length
-}
-
-func Sanitize(input json.RawMessage) json.RawMessage {
-	if json.Valid(input) {
-		return input
-	}
-
-	validEscapeChars := map[byte]bool{
-		'"':  true, // \"
-		'\\': true, // \\
-		'/':  true, // \/
-		'b':  true, // \b
-		'f':  true, // \f
-		'n':  true, // \n
-		'r':  true, // \r
-		't':  true, // \t
-	}
-
-	result := make([]byte, 0, len(input)*2) // Pre-allocate with some extra capacity
-
-	for i := 0; i < len(input); i++ {
-		if input[i] == '\\' && i+1 < len(input) {
-			nextChar := input[i+1]
-
-			if validEscapeChars[nextChar] {
-				result = append(result, input[i], input[i+1])
-				i++ // Skip the next character
-				continue
-			}
-
-			result = append(result, '\\', '\\', nextChar)
-			i++ // Skip the next character
-			continue
-		}
-
-		result = append(result, input[i])
-	}
-
-	return result
 }

@@ -82,11 +82,9 @@ func (p *Pipeline) EditDocument(ctx context.Context, in <-chan models.DocumentSe
 		return nil, fmt.Errorf("edit document error: assistant structured ask: %w", err)
 	}
 
-	sanitized := Sanitize(response)
-
 	var doc models.Document
 
-	if err := json.Unmarshal(sanitized, &doc); err != nil {
+	if err := json.Unmarshal(response, &doc); err != nil {
 		return nil, fmt.Errorf("edit document error: json unmarshal: %w", err)
 	}
 
