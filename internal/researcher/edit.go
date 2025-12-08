@@ -3,6 +3,7 @@ package researcher
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	"github.com/schraf/assistant/pkg/models"
@@ -73,12 +74,12 @@ func (p *Pipeline) EditDocument(ctx context.Context, in <-chan models.DocumentSe
 
 	prompt, err := BuildPrompt(EditPrompt, draft)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("edit document error: %w", err)
 	}
 
 	response, err := p.assistant.StructuredAsk(ctx, EditSystemPrompt, *prompt, DocumentSchema())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("edit document error: assistant structured ask: %w", err)
 	}
 
 	sanitized := Sanitize(response)
@@ -86,7 +87,7 @@ func (p *Pipeline) EditDocument(ctx context.Context, in <-chan models.DocumentSe
 	var doc models.Document
 
 	if err := json.Unmarshal(sanitized, &doc); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("edit document error: json unmarshal: %w", err)
 	}
 
 	slog.Info("edited_document",

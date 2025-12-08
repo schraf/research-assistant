@@ -2,6 +2,7 @@ package researcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 )
 
@@ -42,12 +43,12 @@ func (p *Pipeline) BuildKnowledge(ctx context.Context, in <-chan string, out cha
 		"Information": aggregated,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("build knowledge error: %w", err)
 	}
 
 	knowledge, err := p.assistant.Ask(ctx, KnowledgeSystemPrompt, *prompt)
 	if err != nil {
-		return err
+		return fmt.Errorf("build knowledge error: assistant ask: %w", err)
 	}
 
 	slog.Info("built_knowledge",

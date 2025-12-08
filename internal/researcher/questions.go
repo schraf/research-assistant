@@ -2,6 +2,7 @@ package researcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 )
 
@@ -36,17 +37,17 @@ func (p *Pipeline) GenerateQuestions(ctx context.Context, topic string, out chan
 		"Topic": topic,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("generate questions error: %w", err)
 	}
 
 	response, err := p.assistant.Ask(ctx, QuestionsSystemPrompt, *prompt)
 	if err != nil {
-		return err
+		return fmt.Errorf("generate questions error: assistant ask: %w", err)
 	}
 
 	questions, err := GenerateList(ctx, p.assistant, *response)
 	if err != nil {
-		return err
+		return fmt.Errorf("generate questions error: %w", err)
 	}
 
 	slog.Info("generated_questions",

@@ -2,6 +2,7 @@ package researcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"golang.org/x/sync/errgroup"
@@ -43,12 +44,12 @@ func (p *Pipeline) ResearchQuestion(ctx context.Context, in <-chan string, out c
 					"Question": question,
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("research question error: %w", err)
 				}
 
 				information, err := p.assistant.Ask(ctx, ResearchSystemPrompt, *prompt)
 				if err != nil {
-					return err
+					return fmt.Errorf("research question error: assistant ask: %w", err)
 				}
 
 				slog.Info("resarched_question",

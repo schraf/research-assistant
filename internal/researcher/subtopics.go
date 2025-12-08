@@ -2,6 +2,7 @@ package researcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 )
 
@@ -36,17 +37,17 @@ func (p *Pipeline) CreateSubtopics(ctx context.Context, topic string, out chan<-
 		"Topic": topic,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("create subtopic error: %w", err)
 	}
 
 	response, err := p.assistant.Ask(ctx, SubtopicsSystemPrompt, *prompt)
 	if err != nil {
-		return err
+		return fmt.Errorf("create subtopic error: assistant ask: %w", err)
 	}
 
 	subtopics, err := GenerateList(ctx, p.assistant, *response)
 	if err != nil {
-		return err
+		return fmt.Errorf("create subtopic error: %w", err)
 	}
 
 	slog.Info("created_subtopics",

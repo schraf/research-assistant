@@ -2,6 +2,7 @@ package researcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 )
 
@@ -42,12 +43,12 @@ func (p *Pipeline) AnalyzeKnowledge(ctx context.Context, topic string, in <-chan
 			"Knowledge": knowledge,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("analyze knowledge error: %w", err)
 		}
 
 		analysis, err := p.assistant.Ask(ctx, AnalyzeKnowledgeSystemPrompt, *prompt)
 		if err != nil {
-			return err
+			return fmt.Errorf("analyze knowledge error: assistant ask: %w", err)
 		}
 
 		slog.Info("analyzed_knowledge",

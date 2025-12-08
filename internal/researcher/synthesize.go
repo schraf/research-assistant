@@ -2,6 +2,7 @@ package researcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/schraf/assistant/pkg/models"
@@ -43,17 +44,17 @@ func (p *Pipeline) SynthesizeKnowledge(ctx context.Context, topic string, in <-c
 			"Knowledge": knowledge,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("synthesize knowledge error: %w", err)
 		}
 
 		response, err := p.assistant.Ask(ctx, SynthesizeSystemPrompt, *prompt)
 		if err != nil {
-			return err
+			return fmt.Errorf("synthesize knowledge error: assistant ask: %w", err)
 		}
 
 		paragraphs, err := GenerateList(ctx, p.assistant, *response)
 		if err != nil {
-			return err
+			return fmt.Errorf("synthesize knowledge error: %w", err)
 		}
 
 		length := 0
