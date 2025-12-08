@@ -43,6 +43,8 @@ const (
 		4. Transitions between sections are smooth and logical
 		5. The overall report reads as a unified, well-structured document
 
+		No not perform any further research or do any web searches.
+
 		Maintain the same structure (sections with paragraphs) but refine
 		the content to eliminate redundancy and improve flow. If information is
 		repeated across sections, consolidate it appropriately or remove redundant

@@ -43,5 +43,6 @@ func (g *generator) Generate(ctx context.Context, request models.ContentRequest,
 		return nil, fmt.Errorf("invalid research depth")
 	}
 
-	return researcher.ResearchTopic(ctx, assistant, topic, depth)
+	pipeline := researcher.NewPipeline(assistant)
+	return pipeline.Exec(ctx, topic)
 }
