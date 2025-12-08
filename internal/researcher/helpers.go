@@ -10,7 +10,10 @@ import (
 
 const (
 	ListPrompt = `
-		Given the following list. Return a structured list that follows the provided schema.
+		Given the following list. Break it down into the core elements. 
+		Return a structured list that follows the provided schema ensuring
+		that each item is in its own element in the list.
+
 		{{.Input}}
 		`
 )
@@ -24,7 +27,8 @@ func GenerateList(ctx context.Context, assistant models.Assistant, input string)
 	schema := map[string]any{
 		"type": "array",
 		"items": map[string]any{
-			"type": "string",
+			"type":        "string",
+			"description": "single item",
 		},
 	}
 

@@ -10,7 +10,7 @@ const (
 	SubtopicsSystemPrompt = `
 		You are an expert Research Planner. Your sole task is
 		to take a research description and break the topic down
-		into a list of subtopics.
+		into a list of subtopics for a research report.
 		`
 
 	SubtopicsPrompt = `
@@ -18,11 +18,12 @@ const (
 		{{.Topic}}
 
 		# Goal
-		Provide a list of subtopics for the give topic.
+		Provide a list of 3 to 5 short subtopics for the give topic.
 
 		# Tasks
 		1. Perform an initial web search on the provided topis to gather some context.
-		2. Decide on a series of subtopics based on the description and initial research.
+		2. Decide on a series of 3 to 5 subtopics based on the description and initial research.
+		3. Create and return a list of short subtopic titles for the report.
 		`
 )
 
@@ -53,13 +54,14 @@ func (p *Pipeline) CreateSubtopics(ctx context.Context, topic string, out chan<-
 	slog.Info("created_subtopics",
 		slog.String("topic", topic),
 		slog.Any("subtopics", subtopics),
+		slog.Int("count", len(subtopics)),
 	)
 
 	for _, subtopic := range subtopics {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case out <- subtopic:
+		case out <- topic + " : " + subtopic:
 		}
 	}
 

@@ -18,11 +18,12 @@ const (
 		{{.Topic}}
 
 		# Goal
-		Provide a list of research questions for the given topic.
+		Provide a list of 3 to 5 research questions for the given topic.
 
 		# Task
 		1. Perform a series of web searches on the provided topic for this research.
-		2. Build a list of questions that will need to be answered before writing on this topic.
+		2. Decide on a list of 3 to 5 questions that will need to be answered before writing on this topic.
+		3. Create and return the questions in a list format.
 		`
 )
 
