@@ -10,57 +10,62 @@ import (
 
 const (
 	ResearchSystemPrompt = `
-		You are an expert Researcher. Your sole task is
-		to search the web to gather information to answer
-		a question.
+		You are an expert Researcher. You evaluate information
+		and use web searches to gather more facts around
+		the topic.
 		`
 
 	ResearchPrompt = `
-		## Question
-		{{.Question}}
-		
-		## Goal 
-		Search the web and gather information that will answer
-		the provided question. You do not need to respond with 
-		the answer, but rather provide plenty of information 
-		around the topic that can be used to answer the question.
-		Please provide the information in a well formatted structure.
+		## Topic
+		{{.Topic}}
+
+		## Information
+		{{.Information}}
+
+		## Goal
+		Analyze all of the information and perform web searches
+		to gather more facts around the topic that require more
+		information. Return a complete summary of all of the
+		information gathered.
 		`
 )
 
-func (p *Pipeline) ResearchQuestion(ctx context.Context, in <-chan string, out chan<- string, concurrency int) error {
+const ResearchLoops = 3
+
+func (p *Pipeline) Research(ctx context.Context, in <-chan Section, out chan<- Section, concurrency int) error {
 	defer close(out)
 
 	group, ctx := errgroup.WithContext(ctx)
 
 	for i := 0; i < concurrency; i++ {
 		group.Go(func() error {
-			for question := range in {
-				slog.Info("researching_question",
-					slog.String("question", question),
-				)
+			for section := range in {
+				for i := 0; i < ResearchLoops; i++ {
+					prompt, err := BuildPrompt(ResearchPrompt, PromptArgs{
+						"Topic":       section.Topic + " - " + section.Title,
+						"Information": section.Summary + "\n" + section.Research,
+					})
+					if err != nil {
+						return fmt.Errorf("research error: %w", err)
+					}
 
-				prompt, err := BuildPrompt(ResearchPrompt, PromptArgs{
-					"Question": question,
-				})
-				if err != nil {
-					return fmt.Errorf("research question error: %w", err)
+					research, err := p.assistant.Ask(ctx, ResearchSystemPrompt, *prompt)
+					if err != nil {
+						return fmt.Errorf("research error: assistant ask: %w", err)
+					}
+
+					section.Research = *research
 				}
 
-				information, err := p.assistant.Ask(ctx, ResearchSystemPrompt, *prompt)
-				if err != nil {
-					return fmt.Errorf("research question error: assistant ask: %w", err)
-				}
-
-				slog.Info("resarched_question",
-					slog.String("question", question),
-					slog.String("information", *information),
+				slog.Info("resarched_section",
+					slog.String("section", section.Title),
+					slog.Int("length", len(section.Research)),
 				)
 
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
-				case out <- *information:
+				case out <- section:
 				}
 			}
 
