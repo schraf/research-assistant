@@ -14,7 +14,6 @@ import (
 
 func main() {
 	topic := flag.String("topic", "", "Research topic (required)")
-	model := flag.String("model", "", "Model to use for evaluation")
 	flag.Parse()
 
 	if *topic == "" {
@@ -38,7 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := eval.Evaluate(ctx, generator, request, *model); err != nil {
+	if err := eval.Evaluate(ctx, generator, request, nil); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
 		os.Exit(1)
 	}

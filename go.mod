@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.9
 
 require (
-	github.com/schraf/assistant v1.0.5
+	github.com/schraf/assistant v1.0.6
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sync v0.18.0
 )

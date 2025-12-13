@@ -18,40 +18,44 @@ func NewPipeline(assistant models.Assistant) *Pipeline {
 }
 
 func (p *Pipeline) Exec(ctx context.Context, topic string) (*models.Document, error) {
-	subtopics := make(chan string)
-	sections := make(chan models.DocumentSection)
-	out := make(chan models.Document, 1)
+	plan := make(chan Section)
+	research := make(chan Section, 6)
+	synthesis := make(chan Section, 6)
+	edited := make(chan Section, 6)
+	aggregated := make(chan models.Document, 1)
+	titled := make(chan models.Document, 1)
 
 	group, ctx := errgroup.WithContext(ctx)
 
 	group.Go(func() error {
-		return p.CreateSubtopics(ctx, topic, subtopics)
+		return p.Plan(ctx, topic, plan)
 	})
 
 	group.Go(func() error {
-		return p.CreateDocumentSection(ctx, subtopics, sections, 10)
+		return p.Research(ctx, plan, research, 3)
 	})
 
 	group.Go(func() error {
-		defer close(out)
-		doc, err := p.EditDocument(ctx, sections)
-		if err != nil {
-			return err
-		}
+		return p.Synthesize(ctx, research, synthesis, 3)
+	})
 
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case out <- *doc:
-		}
-		return nil
+	group.Go(func() error {
+		return p.Edit(ctx, synthesis, edited, 3)
+	})
+
+	group.Go(func() error {
+		return p.Aggregate(ctx, edited, aggregated)
+	})
+
+	group.Go(func() error {
+		return p.Title(ctx, aggregated, titled)
 	})
 
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
 
-	doc := <-out
+	doc := <-titled
 
 	return &doc, nil
 }

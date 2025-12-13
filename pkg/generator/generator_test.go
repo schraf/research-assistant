@@ -26,6 +26,6 @@ func TestGenerator(t *testing.T) {
 	generator, err := generators.Create("researcher", nil)
 	require.NoError(t, err)
 
-	err = eval.Evaluate(ctx, generator, request, "mock-model")
+	err = eval.Evaluate(ctx, generator, request, nil)
 	assert.NoError(t, err)
 }
