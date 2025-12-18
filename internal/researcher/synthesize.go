@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -19,36 +17,18 @@ const (
 		`
 )
 
-func (p *Pipeline) Synthesize(ctx context.Context, in <-chan Section, out chan<- Section, concurrency int) error {
-	defer close(out)
-
-	group, ctx := errgroup.WithContext(ctx)
-
-	for i := 0; i < concurrency; i++ {
-		group.Go(func() error {
-			for section := range in {
-				body, err := p.assistant.Ask(ctx, SynthesizeSystemPrompt, section.Research)
-				if err != nil {
-					return fmt.Errorf("synthesize error: assistant ask: %w", err)
-				}
-
-				section.Body = *body
-
-				slog.Info("synthesized_section",
-					slog.String("section", section.Title),
-					slog.Int("body", len(section.Body)),
-				)
-
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case out <- section:
-				}
-			}
-
-			return nil
-		})
+func Synthesize(ctx context.Context, section Section) (*Section, error) {
+	body, err := ask(ctx, SynthesizeSystemPrompt, section.Research)
+	if err != nil {
+		return nil, fmt.Errorf("synthesize error: assistant ask: %w", err)
 	}
 
-	return group.Wait()
+	section.Body = *body
+
+	slog.Info("synthesized_section",
+		slog.String("section", section.Title),
+		slog.Int("body", len(section.Body)),
+	)
+
+	return &section, nil
 }

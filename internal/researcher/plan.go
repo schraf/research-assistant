@@ -31,19 +31,17 @@ const (
 		`
 )
 
-func (p *Pipeline) Plan(ctx context.Context, topic string, out chan<- Section) error {
-	defer close(out)
-
+func Plan(ctx context.Context, topic string) (<-chan Section, error) {
 	prompt, err := BuildPrompt(PlanPrompt, PromptArgs{
 		"Topic": topic,
 	})
 	if err != nil {
-		return fmt.Errorf("create plan error: %w", err)
+		return nil, fmt.Errorf("create plan error: %w", err)
 	}
 
-	response, err := p.assistant.Ask(ctx, PlanSystemPrompt, *prompt)
+	response, err := ask(ctx, PlanSystemPrompt, *prompt)
 	if err != nil {
-		return fmt.Errorf("create plan error: assistant ask: %w", err)
+		return nil, fmt.Errorf("create plan error: assistant ask: %w", err)
 	}
 
 	schema := map[string]any{
@@ -67,15 +65,15 @@ func (p *Pipeline) Plan(ctx context.Context, topic string, out chan<- Section) e
 
 	structuredPrompt := "Extract the list of subtopics, title and summary, from the following text.\n" + *response
 
-	responseJson, err := p.assistant.StructuredAsk(ctx, PlanSystemPrompt, structuredPrompt, schema)
+	responseJson, err := structuredAsk(ctx, PlanSystemPrompt, structuredPrompt, schema)
 	if err != nil {
-		return fmt.Errorf("generate plan error: assistant structured ask: %w", err)
+		return nil, fmt.Errorf("generate plan error: assistant structured ask: %w", err)
 	}
 
 	var sections []Section
 
 	if err := json.Unmarshal(responseJson, &sections); err != nil {
-		return fmt.Errorf("generate plan error: unmarshal json: %w", err)
+		return nil, fmt.Errorf("generate plan error: unmarshal json: %w", err)
 	}
 
 	slog.Info("plan",
@@ -83,15 +81,12 @@ func (p *Pipeline) Plan(ctx context.Context, topic string, out chan<- Section) e
 		slog.Int("sections", len(sections)),
 	)
 
-	for _, section := range sections {
-		section.Topic = topic
+	out := make(chan Section, len(sections))
+	defer close(out)
 
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case out <- section:
-		}
+	for _, section := range sections {
+		out <- section
 	}
 
-	return nil
+	return out, nil
 }

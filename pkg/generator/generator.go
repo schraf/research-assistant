@@ -25,6 +25,5 @@ func (g *generator) Generate(ctx context.Context, request models.ContentRequest,
 		return nil, fmt.Errorf("no research topic")
 	}
 
-	pipeline := researcher.NewPipeline(assistant)
-	return pipeline.Exec(ctx, topic)
+	return researcher.CreateDocument(ctx, assistant, topic)
 }
