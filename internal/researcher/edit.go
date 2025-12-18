@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -17,36 +15,18 @@ const (
 		`
 )
 
-func (p *Pipeline) Edit(ctx context.Context, in <-chan Section, out chan<- Section, concurrency int) error {
-	defer close(out)
-
-	group, ctx := errgroup.WithContext(ctx)
-
-	for i := 0; i < concurrency; i++ {
-		group.Go(func() error {
-			for section := range in {
-				body, err := p.assistant.Ask(ctx, EditSystemPrompt, section.Body)
-				if err != nil {
-					return fmt.Errorf("edit error: assistant ask: %w", err)
-				}
-
-				section.Body = *body
-
-				slog.Info("edited_section",
-					slog.String("section", section.Title),
-					slog.Int("length", len(section.Body)),
-				)
-
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case out <- section:
-				}
-			}
-
-			return nil
-		})
+func Edit(ctx context.Context, section Section) (*Section, error) {
+	body, err := ask(ctx, EditSystemPrompt, section.Body)
+	if err != nil {
+		return nil, fmt.Errorf("edit error: assistant ask: %w", err)
 	}
 
-	return group.Wait()
+	section.Body = *body
+
+	slog.Info("edited_section",
+		slog.String("section", section.Title),
+		slog.Int("length", len(section.Body)),
+	)
+
+	return &section, nil
 }

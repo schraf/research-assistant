@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -32,46 +30,28 @@ const (
 
 const ResearchLoops = 3
 
-func (p *Pipeline) Research(ctx context.Context, in <-chan Section, out chan<- Section, concurrency int) error {
-	defer close(out)
-
-	group, ctx := errgroup.WithContext(ctx)
-
-	for i := 0; i < concurrency; i++ {
-		group.Go(func() error {
-			for section := range in {
-				for i := 0; i < ResearchLoops; i++ {
-					prompt, err := BuildPrompt(ResearchPrompt, PromptArgs{
-						"Topic":       section.Topic + " - " + section.Title,
-						"Information": section.Summary + "\n" + section.Research,
-					})
-					if err != nil {
-						return fmt.Errorf("research error: %w", err)
-					}
-
-					research, err := p.assistant.Ask(ctx, ResearchSystemPrompt, *prompt)
-					if err != nil {
-						return fmt.Errorf("research error: assistant ask: %w", err)
-					}
-
-					section.Research = *research
-				}
-
-				slog.Info("resarched_section",
-					slog.String("section", section.Title),
-					slog.Int("length", len(section.Research)),
-				)
-
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case out <- section:
-				}
-			}
-
-			return nil
+func Research(ctx context.Context, section Section) (*Section, error) {
+	for i := 0; i < ResearchLoops; i++ {
+		prompt, err := BuildPrompt(ResearchPrompt, PromptArgs{
+			"Topic":       section.Topic + " - " + section.Title,
+			"Information": section.Summary + "\n" + section.Research,
 		})
+		if err != nil {
+			return nil, fmt.Errorf("research error: %w", err)
+		}
+
+		research, err := ask(ctx, ResearchSystemPrompt, *prompt)
+		if err != nil {
+			return nil, fmt.Errorf("research error: assistant ask: %w", err)
+		}
+
+		section.Research = *research
 	}
 
-	return group.Wait()
+	slog.Info("resarched_section",
+		slog.String("section", section.Title),
+		slog.Int("length", len(section.Research)),
+	)
+
+	return &section, nil
 }
