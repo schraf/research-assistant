@@ -30,28 +30,30 @@ const (
 
 const ResearchLoops = 3
 
-func Research(ctx context.Context, section Section) (*Section, error) {
+func Research(ctx context.Context, section Section) (Section, error) {
+	ctx = withLiteModel(ctx)
+
 	for i := 0; i < ResearchLoops; i++ {
 		prompt, err := BuildPrompt(ResearchPrompt, PromptArgs{
 			"Topic":       section.Topic + " - " + section.Title,
 			"Information": section.Summary + "\n" + section.Research,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("research error: %w", err)
+			return Section{}, fmt.Errorf("research error: %w", err)
 		}
 
 		research, err := ask(ctx, ResearchSystemPrompt, *prompt)
 		if err != nil {
-			return nil, fmt.Errorf("research error: assistant ask: %w", err)
+			return Section{}, fmt.Errorf("research error: assistant ask: %w", err)
 		}
 
 		section.Research = *research
 	}
 
-	slog.Info("resarched_section",
+	slog.Info("researched_section",
 		slog.String("section", section.Title),
 		slog.Int("length", len(section.Research)),
 	)
 
-	return &section, nil
+	return section, nil
 }

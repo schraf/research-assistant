@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/schraf/assistant/pkg/eval"
 	"github.com/schraf/assistant/pkg/generators"
 	"github.com/schraf/assistant/pkg/models"
@@ -13,6 +14,8 @@ import (
 )
 
 func main() {
+	_ = godotenv.Load()
+
 	topic := flag.String("topic", "", "Research topic (required)")
 	flag.Parse()
 
