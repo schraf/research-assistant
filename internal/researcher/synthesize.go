@@ -17,10 +17,12 @@ const (
 		`
 )
 
-func Synthesize(ctx context.Context, section Section) (*Section, error) {
+func Synthesize(ctx context.Context, section Section) (Section, error) {
+	ctx = withDeepModel(ctx)
+
 	body, err := ask(ctx, SynthesizeSystemPrompt, section.Research)
 	if err != nil {
-		return nil, fmt.Errorf("synthesize error: assistant ask: %w", err)
+		return Section{}, fmt.Errorf("synthesize error: assistant ask: %w", err)
 	}
 
 	section.Body = *body
@@ -30,5 +32,5 @@ func Synthesize(ctx context.Context, section Section) (*Section, error) {
 		slog.Int("body", len(section.Body)),
 	)
 
-	return &section, nil
+	return section, nil
 }

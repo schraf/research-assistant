@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"log/slog"
 )
 
@@ -31,62 +32,74 @@ const (
 		`
 )
 
-func Plan(ctx context.Context, topic string) (<-chan Section, error) {
-	prompt, err := BuildPrompt(PlanPrompt, PromptArgs{
-		"Topic": topic,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("create plan error: %w", err)
-	}
+func Plan(ctx context.Context, topic string) iter.Seq2[Section, error] {
+	ctx = withDeepModel(ctx)
 
-	response, err := ask(ctx, PlanSystemPrompt, *prompt)
-	if err != nil {
-		return nil, fmt.Errorf("create plan error: assistant ask: %w", err)
-	}
+	return func(yield func(Section, error) bool) {
+		prompt, err := BuildPrompt(PlanPrompt, PromptArgs{
+			"Topic": topic,
+		})
+		if err != nil {
+			yield(Section{}, fmt.Errorf("create plan error: %w", err))
+			return
+		}
 
-	schema := map[string]any{
-		"type":        "array",
-		"description": "list of subtopics",
-		"items": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"title": map[string]any{
-					"type":        "string",
-					"description": "title of the subtopic",
+		response, err := ask(ctx, PlanSystemPrompt, *prompt)
+		if err != nil {
+			yield(Section{}, fmt.Errorf("create plan error: assistant ask: %w", err))
+			return
+		}
+
+		schema := map[string]any{
+			"type":        "array",
+			"description": "list of subtopics",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"title": map[string]any{
+						"type":        "string",
+						"description": "title of the subtopic",
+					},
+					"summary": map[string]any{
+						"type":        "string",
+						"description": "summary of the subtopic",
+					},
 				},
-				"summary": map[string]any{
-					"type":        "string",
-					"description": "summary of the subtopic",
-				},
+				"required": []string{"title", "summary"},
 			},
-			"required": []string{"title", "summary"},
-		},
+		}
+
+		structuredPrompt := "Extract the list of subtopics, title and summary, from the following text.\n" + *response
+
+		responseJson, err := structuredAsk(ctx, PlanSystemPrompt, structuredPrompt, schema)
+		if err != nil {
+			yield(Section{}, fmt.Errorf("generate plan error: assistant structured ask: %w", err))
+			return
+		}
+
+		var sections []Section
+
+		if err := json.Unmarshal(responseJson, &sections); err != nil {
+			yield(Section{}, fmt.Errorf("generate plan error: unmarshal json: %w", err))
+			return
+		}
+
+		slog.Info("plan",
+			slog.String("topic", topic),
+			slog.Int("sections", len(sections)),
+		)
+
+		for index, section := range sections {
+			section.Index = index
+
+			slog.Info("planned_section",
+				slog.String("section", section.Title),
+				slog.Int("index", section.Index),
+			)
+
+			if !yield(section, nil) {
+				return
+			}
+		}
 	}
-
-	structuredPrompt := "Extract the list of subtopics, title and summary, from the following text.\n" + *response
-
-	responseJson, err := structuredAsk(ctx, PlanSystemPrompt, structuredPrompt, schema)
-	if err != nil {
-		return nil, fmt.Errorf("generate plan error: assistant structured ask: %w", err)
-	}
-
-	var sections []Section
-
-	if err := json.Unmarshal(responseJson, &sections); err != nil {
-		return nil, fmt.Errorf("generate plan error: unmarshal json: %w", err)
-	}
-
-	slog.Info("plan",
-		slog.String("topic", topic),
-		slog.Int("sections", len(sections)),
-	)
-
-	out := make(chan Section, len(sections))
-	defer close(out)
-
-	for _, section := range sections {
-		out <- section
-	}
-
-	return out, nil
 }
