@@ -10,14 +10,19 @@ import (
 )
 
 const (
-	ComposeSystemPrompt = `
-		You are an expert editor. Your role is to review content and 
-		ensure that it takes a neutral stance and is clearly written.
-		Remove any Markdown (except for # and ## headers), LaTeX, HTML tags, or any escape characters.
+	EditorSystemPrompt = `
+		You are an expert editor. Your role reviews, revises, and optimizes 
+		written content to ensure clarity, accuracy, and consistent formatting. 
+		You improve readability while preserving the author's original voice.
+		Ensure that later sections do no repeat concepts that were already
+		covered in previous sections, instead reword them assuming the content
+		is read from top to bottom.
+		Remove any Markdown (except for # and ## headers), LaTeX, HTML tags, 
+		or any escape characters.
 		`
 )
 
-func Compose(ctx context.Context, sections []Section) (string, error) {
+func Edit(ctx context.Context, sections []Section) (string, error) {
 	sortedSections := slices.Clone(sections)
 	slices.SortFunc(sortedSections, func(a, b Section) int {
 		return cmp.Compare(a.Index, b.Index)
@@ -41,11 +46,11 @@ func Compose(ctx context.Context, sections []Section) (string, error) {
 
 	responseJson, err := structuredAsk(ctx, "Create a document title", summary, schema)
 	if err != nil {
-		return "", fmt.Errorf("compose title: assistant ask: %w", err)
+		return "", fmt.Errorf("edit title: assistant ask: %w", err)
 	}
 
 	if err := json.Unmarshal(responseJson, &title); err != nil {
-		return "", fmt.Errorf("compose title: unmarshal json: %w", err)
+		return "", fmt.Errorf("edit title: unmarshal json: %w", err)
 	}
 
 	slog.Info("titled_document",
@@ -53,7 +58,7 @@ func Compose(ctx context.Context, sections []Section) (string, error) {
 	)
 
 	// ╭────────────────────────────────────────────────────────────────────╮
-	// │ Compose full document text                                         │
+	// │ Edit full document text                                            │
 	// ╰────────────────────────────────────────────────────────────────────╯
 
 	ctx = withDeepModel(ctx)
@@ -64,12 +69,12 @@ func Compose(ctx context.Context, sections []Section) (string, error) {
 		content += "\n\n## " + section.Title + "\n\n" + section.Body
 	}
 
-	report, err := ask(ctx, ComposeSystemPrompt, content)
+	report, err := ask(ctx, EditorSystemPrompt, content)
 	if err != nil {
-		return "", fmt.Errorf("compose document: assistant ask: %w", err)
+		return "", fmt.Errorf("edit document: assistant ask: %w", err)
 	}
 
-	slog.Info("composed_document",
+	slog.Info("edited_document",
 		slog.Int("length", len(*report)),
 	)
 

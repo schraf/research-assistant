@@ -37,9 +37,9 @@ func CreateDocument(ctx context.Context, assistant models.Assistant, topic strin
 		Name: "aggregate_sections",
 	}
 
-	composeStage := stages.TransformStage[[]Section, string]{
-		Name:        "compose_document",
-		Transformer: Compose,
+	editStage := stages.TransformStage[[]Section, string]{
+		Name:        "edit_document",
+		Transformer: Edit,
 	}
 
 	structureStage := stages.TransformStage[string, models.Document]{
@@ -59,7 +59,7 @@ func CreateDocument(ctx context.Context, assistant models.Assistant, topic strin
 			stage2 := researchStage.Create(c.Context(), stage1)
 			stage3 := synthesisStage.Create(c.Context(), stage2)
 			stage4 := aggregateStage.Create(c.Context(), stage3)
-			stage5 := composeStage.Create(c.Context(), stage4)
+			stage5 := editStage.Create(c.Context(), stage4)
 			stage6 := structureStage.Create(c.Context(), stage5)
 
 			out := stage6
